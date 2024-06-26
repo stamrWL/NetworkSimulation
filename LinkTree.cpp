@@ -19,17 +19,18 @@ void LinkTree::releasLeft(double now){
     }
 }
 
-void LinkTree::trans(double start,double end,double value){
+std::pair<double, double> LinkTree::trans(double start,double end,double value){
     releasLeft(start);
     Update(end);
     LinkB->addValue(start,end,-1*value);
+    return std::pair<double,double>(start, end);
 }
 
-void LinkTree::trans(double start,double size){
+std::pair<double, double> LinkTree::trans(double start,double size){
     releasLeft(start);
     std::vector<double> interval;
     LinkB->ContinuousAllocated(start,size,interval);
     if(interval.size() > 1)
         Update(interval.at(interval.size() - 1));
-    LinkB->ContinuousAllocated(start,size,interval);
+    return LinkB->addContinueValue(interval,size);
 }

@@ -289,7 +289,7 @@ void IntervalTree::addValue(double LB, double RB, double value)
 	this->root->addValue(LB, RB, value);
 }
 
-void IntervalTree::addContinueValue(double LB,double Size){
+std::pair<double,double> IntervalTree::addContinueValue(double LB,double Size){
 	intoNextWindows(LB);
 	std::vector<double> interval;
 	ContinuousAllocated(LB,Size,interval);
@@ -310,26 +310,26 @@ void IntervalTree::addContinueValue(double LB,double Size){
 		addValue(start,sec,-1*value);
 		start = sec;
 	}while(i<interval.size());
+	return std::pair<double,double>(interval[0],sec);
 }
 
-void IntervalTree::addContinueValue(std::vector<double>& interval,double Size){
+std::pair<double,double> IntervalTree::addContinueValue(std::vector<double>& interval,double Size){
 	double start,sec,value;
 	int i = 0; 
 	start = interval[i++];
-	do{
+	while(Size > 0){
 		if(i<interval.size()){
 			value = interval[i++];
-		}else{
-			value = List->getLastNode()->getValue();
-		}
-		if(i<interval.size()){
 			sec = interval[i++];
 		}else{
+			value = List->getLastNode()->getValue();
 			sec = start + Size/value;
 		}
 		addValue(start,sec,-1*value);
 		start = sec;
-	}while(i<interval.size());
+		Size -= (sec - start) * value;
+	}
+	return std::pair<double,double>(interval[0],sec);
 }
 
 double IntervalTree::getValue(double point) 
@@ -440,7 +440,7 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea, s
 			leftArea = 0;
 			ansPoint = Node->getRightB();
 			ans.clear();
-			ans.push_back(Node->getRightB());
+			ans.push_back(ansPoint);
 		}
 		else
 		{

@@ -112,8 +112,8 @@ public:
 		this->defualtValue = defualtValue;
 	}
 	void addValue(double LB, double RB, double value);
-	void addContinueValue(double LB,double Size);
-	void addContinueValue(std::vector<double>& interval,double Size);
+	std::pair<double,double> addContinueValue(double LB,double Size);
+	std::pair<double,double> addContinueValue(std::vector<double>& interval,double Size);
 	double getValue(double point) ;
 	double getRangeArea(double start,double end) ;
 	void releaseLeft(double B);

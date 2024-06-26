@@ -25,7 +25,7 @@ public:
         LinkB = new IntervalTree(initValue,left,windows);
     }
     
-    void trans(double start,double end,double value);
-    void trans(double start,double size);
+    std::pair<double, double> trans(double start,double end,double value);
+    std::pair<double, double> trans(double start,double size);
 };
 #endif

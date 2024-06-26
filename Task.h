@@ -1,4 +1,5 @@
 #include <vector>
+#include <map>
 #include <memory>
 #include <Exceptions.h>
 #include "event.h"
@@ -9,32 +10,31 @@ private:
     long long TaskID;
     double startTime;
     double TaskSize;
-    int fromType;
     int fromIndex;
-    int ToType;
     int ToIndex;
 protected:
     std::vector<std::shared_ptr<Event>> EventList;
-public:
-    Task(long long TaskID,double startTime,double TaskSize,int fromType,int fromIndex,int ToType,int ToIndex){
+    Task(long long TaskID,double startTime,double TaskSize,int fromIndex,int ToIndex){
         this->TaskID = TaskID;
         this->startTime = startTime;
         this->TaskSize = TaskSize;
-        this->fromType = fromType;
         this->fromIndex = fromIndex;
-        this->ToType = ToType;
         this->ToIndex = ToIndex;
     }
-    int getFromType(){return fromType;}
-    int getFromIndex(){return fromIndex;}
-    int getToType(){return ToType;}
-    int getToIndex(){return ToIndex;}
+public:
+    static std::map<long long, std::shared_ptr<Task>> TaskMap;
+public:
+    std::shared_ptr<Task> CreateTask(long long TaskID, double startTime, double TaskSize, int fromIndex, int ToIndex){
+        std::shared_ptr<Task> newTask = std::make_shared<Task>(TaskID, startTime, TaskSize, fromIndex,  ToIndex);
+        TaskMap[TaskID] = newTask;
+        return newTask;
+    }
+    long long getTaskID()const{return TaskID;}
+    int getFromIndex()const{return fromIndex;}
+    int getToIndex()const{return ToIndex;}
+    double getStartTime()const{return startTime;}
+    double getTaskSize()const{return TaskSize;}
     void addEvent(std::shared_ptr<Event> Event){
-        int LastType = Event->getFromType();
-        int LastIndex = Event->getFromIndex();
-        if(LastIndex != this->EventList.at(EventList.size() - 1)->getToIndex() || LastType != this->EventList.at(EventList.size() - 1)->getFromType()){
-            throw std::exception("nextEvent from != to")
-        }
         this->EventList.push_back(Event);
     }
 }

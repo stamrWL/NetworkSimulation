@@ -2,11 +2,15 @@
 #define CLASSEVENT
 #include <map>
 #include <memory>
+#include <condition_variable>
 #include <cmath>
 #include <queue>
 #include "node.h"
 #include "Task.h"
-class Event : public std::enable_shared_from_this<Event>{
+
+
+
+class TransEvent : public std::enable_shared_from_this<TransEvent>{
 private:
     static long long eventCount;
     long long Eventid;
@@ -14,7 +18,7 @@ private:
     int fromIndex;
     int toIndex;
     double startTime,endTime;
-    Event(long long Taskid,int fIndex,int tIndex,double sTime,double eTime = -1){
+    TransEvent(long long Taskid,int fIndex,int tIndex,double sTime,double eTime = -1){
         this->Taskid = Taskid;
         this->Eventid = ++eventCount;
         this->fromIndex = fIndex;
@@ -23,9 +27,12 @@ private:
         this->endTime = eTime;
     }
 public:
-    static std::map<long long,std::shared_ptr<Event>> eventMap;
-    static std::priority_queue<std::shared_ptr<Event>,std::vector<std::shared_ptr<Event>>,std::less<std::shared_ptr<Event>>> eventQueue;
-    static std::shared_ptr<Event> CreateEvent(long long Taskid,int fIndex, int tIndex, double sTime, double eTime = -1);
+    static std::map<long long,std::shared_ptr<TransEvent>> eventMap;
+    static std::mutex mut;
+    static bool needblock = false;
+    static std::condition_variable cv;
+    static std::priority_queue<std::shared_ptr<TransEvent>,std::vector<std::shared_ptr<TransEvent>>,std::less<std::shared_ptr<TransEvent>>> eventQueue;
+    static std::shared_ptr<TransEvent> CreateEvent(long long Taskid,int fIndex, int tIndex, double sTime, double eTime = -1);
 public:
     long long getEventid() const;
     std::shared_ptr<Task> getTask();
@@ -37,8 +44,6 @@ public:
     int getToIndex() const;
 
     void finish(double endTime = -1);
-
-
 }
 
 #endif

@@ -15,7 +15,7 @@ private:
     double stepTime;
 protected:
     void Update(double endTime);
-    void releasLeft(double now);
+    void releasLeft(double now); 
 public:
     LinkTree(double initValue,double left,double windows,double stepTime,Link* link){
         LastUpdate = initValue;
@@ -24,7 +24,7 @@ public:
         this->link = link;
         LinkB = new IntervalTree(initValue,left,windows);
     }
-    
+    double getRangeArea(double start, double end);
     std::pair<double, double> trans(double start,double end,double value);
     std::pair<double, double> trans(double start,double size);
 };

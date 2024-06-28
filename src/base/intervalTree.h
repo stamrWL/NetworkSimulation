@@ -7,6 +7,8 @@
 #include <memory>
 #include <vector>
 #include <cfloat>
+#include <mutex>
+#include <shared_mutex>
 
 class TreeNode : public std::enable_shared_from_this<TreeNode>{
 private:
@@ -17,6 +19,7 @@ private:
 	double rightB;
 	double midB;
 	double value;
+
 protected:
 	std::shared_ptr<TreeNode> NextNode;
 	std::shared_ptr<TreeNode> LastNode;
@@ -93,9 +96,16 @@ private:
 	double lastLeftB;
 	double windows;
 	double defualtValue;
+	std::shared_mutex UpdateLock;
+	thread_local int _hasShare = 0;
+	thread_local int _hasUnique = 0;
+	void shareLock();
+	void releaseShareLock();
+	void uniqueLock();
+	void releaseUniqueLock();
 	// 
 protected:
-	std::shared_ptr<TreeNode> getInterval(double point) ;
+	std::shared_ptr<TreeNode> getInterval(double point);
 	void Slice(double B);
 	void extend(double rightB);
 	void extend(double rightB, double value);

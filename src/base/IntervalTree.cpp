@@ -41,6 +41,7 @@ void TreeNode::Slice(double B)
 			this->rightNode->Slice(B);
 		}
 	}
+
 }
 
 void TreeNode::addValue(double LB, double RB, double AddValue)
@@ -247,12 +248,50 @@ std::shared_ptr<TreeNode> TreeNode::releaseLeft(double B)
 	}
 }
 
+void IntervalTree::shareLock(){
+	if(_hasUnique == 0 && _hasShare == 0){
+		UpdateLock.lock_shared();
+	}
+	_hasShare += 1;
+} 
+
+void IntervalTree::uniqueLock(){
+	if(_hasShare != 0){
+		UpdateLock.unlock_shared();
+	}
+	if(_hasUnique == 0){
+		UpdateLock.lock();
+	}
+	_hasUnique += 1;
+}
+
+void IntervalTree::releaseShareLock(){
+	_hasShare -= 1;
+	if(_hasUnique == 0 && _hasShare == 0){
+		UpdateLock.unlock_shared();
+	}
+}
+
+
+void IntervalTree::releaseUniqueLock(){
+	_hasUnique --;
+	if(_hasUnique == 0){
+		UpdateLock.unlock();
+	}
+	if(_hasShare != 0){
+		UpdateLock.lock_shared();
+	}
+}
+
+
+
 std::shared_ptr<TreeNode> IntervalTree::getInterval(double point) 
 {
 	return root->getInterval(point);
 }
 
 void IntervalTree::Slice(double B) {
+	uniqueLock();
 	extend(B);
 	this->root->Slice(B);
 }
@@ -260,6 +299,7 @@ void IntervalTree::Slice(double B) {
 
 void IntervalTree::extend(double rightB)
 {
+	uniqueLock();
 	while (this->root->getRightB() < rightB) {
 		auto Last = List->getLastNode();
 		root = TreeNode::Create(root, rightB, defualtValue, List, Last);
@@ -268,6 +308,7 @@ void IntervalTree::extend(double rightB)
 
 void IntervalTree::extend(double rightB, double value)
 {
+	uniqueLock();
 	while (this->root->getRightB() < rightB) {
 		auto Last = List->getLastNode();
 		root = TreeNode::Create(root, rightB, value, List, Last);
@@ -276,6 +317,7 @@ void IntervalTree::extend(double rightB, double value)
 
 void IntervalTree::addValue(double LB, double RB, double value)
 {
+	uniqueLock();
 	double rightB = root->getRightB();
 	double LeftB = root->getLeftB();
 	if (rightB < RB)
@@ -290,6 +332,7 @@ void IntervalTree::addValue(double LB, double RB, double value)
 }
 
 std::pair<double,double> IntervalTree::addContinueValue(double LB,double Size){
+	shareLock();
 	intoNextWindows(LB);
 	std::vector<double> interval;
 	ContinuousAllocated(LB,Size,interval);
@@ -314,6 +357,7 @@ std::pair<double,double> IntervalTree::addContinueValue(double LB,double Size){
 }
 
 std::pair<double,double> IntervalTree::addContinueValue(std::vector<double>& interval,double Size){
+	shareLock();
 	double start,sec,value;
 	int i = 0; 
 	start = interval[i++];
@@ -334,10 +378,12 @@ std::pair<double,double> IntervalTree::addContinueValue(std::vector<double>& int
 
 double IntervalTree::getValue(double point) 
 {
+	shareLock();
 	return this->root->getValue(point);
 }
 
 double IntervalTree::getRangeArea(double start,double end) {
+	shareLock();
 	double RB = root->getRightB();
 	double Area = 0;
 	if(RB < end){
@@ -361,6 +407,7 @@ double IntervalTree::getRangeArea(double start,double end) {
 }
 
 void IntervalTree::releaseLeft(double B) {
+	uniqueLock();
 	intoNextWindows(B);
 	double RealseB = int((B - lastLeftB) / windows - 1) * windows + lastLeftB;
 	double LB = root->getLeftB();
@@ -371,12 +418,14 @@ void IntervalTree::releaseLeft(double B) {
 
 void IntervalTree::intoNextWindows()
 {
+	uniqueLock();
 	double Right = (int((root->getRightB() - lastLeftB) / windows) + 1) * windows + lastLeftB;
 	extend(Right);
 }
 
 void IntervalTree::intoNextWindows(double x)
 {
+	uniqueLock();
 	if (x >= root->getRightB()) {
 		double Right = (int((x - lastLeftB) / windows) + 1) * windows + lastLeftB;
 		extend(Right);
@@ -385,14 +434,22 @@ void IntervalTree::intoNextWindows(double x)
 
 void IntervalTree::changeDefualtValue(double now, double Value) {
 	intoNextWindows(now);
-	//auto node = List->getLastNode();
+	
+	shareLock();
+
 	double RB = root->getRightB();
 	double Pvalue = root->getRightValue(now);
 	if (Pvalue < defualtValue - Value && Pvalue != defualtValue) {
 		throw std::range_error("now has Task running");
 	}
+
+	releaseShareLock();
+
 	addValue(now, RB, Value - defualtValue);
+
+	uniqueLock();
 	defualtValue = Value;
+	releaseUniqueLock();
 }
 
 
@@ -401,6 +458,7 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea){
 
 	intoNextWindows(startPoint);
 
+	shareLock();
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double leftArea = 0;
 	double ansPoint = startPoint;
@@ -421,6 +479,7 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea){
 		}
 		Node = Node->getNextNode();
 	}
+	releaseShareLock();
 	return List->getRightB();
 }
 
@@ -429,6 +488,7 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea, s
 
 	intoNextWindows(startPoint);
 
+	shareLock();
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double leftArea = 0;
 	double ansPoint = startPoint;
@@ -457,12 +517,14 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea, s
 		}
 		Node = Node->getNextNode();
 	}
+	releaseShareLock();
 	return ansPoint;
 }
 
 double IntervalTree::AllocatedArea_DD(double startPoint, double targetArea)
 {
 	// 返回的值为从startPoint开始分配的高
+	shareLock();
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double hight = Node == List ? -1 : DBL_MAX;
 	// std::cout << viewList() << std::endl;
@@ -475,14 +537,18 @@ double IntervalTree::AllocatedArea_DD(double startPoint, double targetArea)
 			break;
 		Node = Node->getNextNode();
 	}
+	releaseShareLock();
 	return Node == List || hight < 0.001 || Node == nullptr ? -1 : hight;
 }
 
 double IntervalTree::AllocatedArea_DDD(double startPoint, double targetArea, double hight)
 {
+	shareLock();
 	// 返回的值为最接近(往后)满足高为hight，面积为targetArea的区块的起点
-	if (hight <= 0)
+	if (hight <= 0){
+		releaseShareLock();
 		return root->getRightB();
+	}
 
 	intoNextWindows(startPoint);
 
@@ -506,6 +572,7 @@ double IntervalTree::AllocatedArea_DDD(double startPoint, double targetArea, dou
 		}
 		Node = Node->getNextNode();
 	}
+	releaseShareLock();
 	return hight > defualtValue ? -1 : ansPoint;
 }
 
@@ -521,12 +588,3 @@ std::string IntervalTree::viewList()
 	return stream.str();
 }
 
-
-// int main() {
-// 	IntervalTree A(0.4, 0, 5);
-// 	A.releaseLeft(0.000001);
-// 	A.releaseLeft(5.000001);
-// 	A.releaseLeft(10.000001);
-// 	std::cout<<A.viewList();
-// 	return 0;
-// }

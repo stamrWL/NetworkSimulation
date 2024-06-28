@@ -19,6 +19,10 @@ void LinkTree::releasLeft(double now){
     }
 }
 
+double LinkTree::getRangeArea(double start, double end){
+    return LinkB->getRangeArea(start, end);
+}
+
 std::pair<double, double> LinkTree::trans(double start,double end,double value){
     releasLeft(start);
     Update(end);

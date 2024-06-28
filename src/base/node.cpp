@@ -3,11 +3,17 @@
 
 void Node::acceptTask(std::shared_ptr<Task> task,double time){
     int ToIndex = task->getToIndex();
-    int NextNode = this->routeMap[ToIndex];
-    auto event = Event::CreateEvent(task->getTaskID(),this->index,NextNode,time);
-    this->Trans(event);
+    if(ToIndex != this->index){
+        int NextNode = this->routeMap[ToIndex];
+        auto event = Event::CreateEvent(task->getTaskID(),this->index,NextNode,time);
+        this->Trans(event);
+    }else{
+        task->setEndTime(time);
+        std::unique_lock<std::mutex> lock(Task::mtx);
+        Task::FinishTask.push(task);
+        Task::TaskHasFinish = true;
+    }
 }
-
 
 void Node::Trans(std::shared_ptr<Event> event){
     auto task = event->getTask();

@@ -10,16 +10,15 @@ class Node
 {
 private:
     int index;
-    double stepTime;
     std::shared_ptr<std::map<int,int>> routeMap;
-    std::shared_ptr<std::map<int,Link>> routeMap;
-    int getNextNode(TransTask& event);
+    // int getNextNode(TransTask& event);
 public:
-    static std::map<int,std::shared_ptr<Node>> NodeMap;
+    static std::map<int,Node*> NodeMap;
+
 public:
-    Node(int index,double stepTime){
+    Node(int index){
         this->index = index;
-        this->stepTime = stepTime;
+        NodeMap[index] = this;
     }
 
     void setRoutMap(std::shared_ptr<std::map<int,int>> _routeMap){
@@ -28,7 +27,7 @@ public:
 
     void acceptTask(std::shared_ptr<Task> task,double time);
 
-    void Trans(std::shared_ptr<Event> event);
+    void Trans(std::shared_ptr<TransEvent> event);
 
 };
 

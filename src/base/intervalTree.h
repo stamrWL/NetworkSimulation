@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CLASSTREENODE
+#define CLASSTREENODE
 #include <iostream>
 #include <sstream>
 #include <string.h>
@@ -8,7 +9,7 @@
 #include <vector>
 #include <cfloat>
 #include <mutex>
-#include <shared_mutex>
+#include <condition_variable>
 
 class TreeNode : public std::enable_shared_from_this<TreeNode>{
 private:
@@ -96,9 +97,12 @@ private:
 	double lastLeftB;
 	double windows;
 	double defualtValue;
-	std::shared_mutex UpdateLock;
-	thread_local int _hasShare = 0;
-	thread_local int _hasUnique = 0;
+	std::mutex UpdateLock;
+	static int RCount;
+	static int WCount;
+	static std::condition_variable cv;
+	static thread_local int _hasShare;
+	static thread_local int _hasUnique;
 	void shareLock();
 	void releaseShareLock();
 	void uniqueLock();
@@ -136,3 +140,6 @@ public:
 	double AllocatedArea_DDD(double startPoint, double targetArea, double hight);
 	std::string viewList();
 };
+
+
+#endif

@@ -1,6 +1,14 @@
 ﻿
 #include "intervalTree.h"
 
+thread_local int IntervalTree::_hasShare = 0;
+thread_local int IntervalTree::_hasUnique = 0;
+
+std::condition_variable IntervalTree::cv;
+
+int IntervalTree::RCount = 0;
+int IntervalTree::WCount = 0;
+
 void TreeNode::Delete() {
 	if (NextNode != nullptr)
 		NextNode->setLastNode(LastNode);
@@ -248,19 +256,27 @@ std::shared_ptr<TreeNode> TreeNode::releaseLeft(double B)
 	}
 }
 
+
 void IntervalTree::shareLock(){
+	
 	if(_hasUnique == 0 && _hasShare == 0){
-		UpdateLock.lock_shared();
+		std::unique_lock<std::mutex> lk(UpdateLock);
+		IntervalTree::cv.wait(lk, []{return IntervalTree::WCount == 0;});
+		IntervalTree::RCount += 1;
 	}
 	_hasShare += 1;
 } 
 
 void IntervalTree::uniqueLock(){
-	if(_hasShare != 0){
-		UpdateLock.unlock_shared();
-	}
-	if(_hasUnique == 0){
-		UpdateLock.lock();
+	if(_hasUnique == 0)
+	{
+		std::unique_lock<std::mutex> lk(UpdateLock);
+		if(_hasShare != 0){
+			IntervalTree::RCount -= 1;
+		}
+		if(_hasUnique == 0){
+			IntervalTree::cv.wait(lk, []{return IntervalTree::WCount == 0 && IntervalTree::RCount == 0;});
+		}
 	}
 	_hasUnique += 1;
 }
@@ -268,18 +284,25 @@ void IntervalTree::uniqueLock(){
 void IntervalTree::releaseShareLock(){
 	_hasShare -= 1;
 	if(_hasUnique == 0 && _hasShare == 0){
-		UpdateLock.unlock_shared();
+		std::unique_lock<std::mutex> lk(UpdateLock);
+		IntervalTree::RCount -= 1;
+		IntervalTree::cv.notify_all();
 	}
 }
 
 
 void IntervalTree::releaseUniqueLock(){
 	_hasUnique --;
-	if(_hasUnique == 0){
-		UpdateLock.unlock();
-	}
-	if(_hasShare != 0){
-		UpdateLock.lock_shared();
+	if(_hasUnique == 0)
+	{
+		std::unique_lock<std::mutex> lk(UpdateLock);
+		if(_hasUnique == 0){
+			IntervalTree::WCount -= 1;
+		}
+		if(_hasShare != 0){
+			IntervalTree::RCount += 1;
+		}
+		IntervalTree::cv.notify_all();
 	}
 }
 

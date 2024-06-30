@@ -24,17 +24,19 @@ double LinkTree::getRangeArea(double start, double end){
 }
 
 std::pair<double, double> LinkTree::trans(double start,double end,double value){
-    releasLeft(start);
+    // releasLeft(start);
     Update(end);
     LinkB->addValue(start,end,-1*value);
-    return std::pair<double,double>(start, end);
+    return std::pair<double,double>(start, end + this->link->getDelay(start));
 }
 
 std::pair<double, double> LinkTree::trans(double start,double size){
-    releasLeft(start);
+    // releasLeft(start);
     std::vector<double> interval;
     LinkB->ContinuousAllocated(start,size,interval);
     if(interval.size() > 1)
         Update(interval.at(interval.size() - 1));
-    return LinkB->addContinueValue(interval,size);
+    auto ans = LinkB->addContinueValue(interval,size);
+    ans.second += this->link->getDelay(start);
+    return ans;
 }

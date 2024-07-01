@@ -4,7 +4,7 @@
 std::map<std::pair<int,int>,std::shared_ptr<Link>> Link::linkMap;
 
 Link::Link(int fromIndex,int ToIndex,std::shared_ptr<std::vector<std::pair<double,double>>> InitRate,std::shared_ptr<std::vector<std::pair<double,double>>> Delay,double stepTime,double windows){
-
+    this->RateDelayList = nullptr;
     this->fromIndex = fromIndex;
 
     this->ToIndex = ToIndex;  

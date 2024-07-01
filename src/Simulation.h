@@ -7,7 +7,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <vector>
-#include <thread>
+#include <pthread.h>
 #include <map>
 #include <omp.h>
 

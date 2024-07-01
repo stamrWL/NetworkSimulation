@@ -83,7 +83,7 @@ int NetWorkSimulation::initNode(int FType,int Findex){
 
 void NetWorkSimulation::initLink(int FType,int Findex,int TType,int Tindex,std::vector<double>& Time,std::vector<double>& RateList,std::vector<double>& LengthList){
     std::pair<int, int> FNodeKey = std::make_pair(FType, Findex);
-    std::pair<int, int> SNodeKey = std::make_pair(FType, Findex);
+    std::pair<int, int> SNodeKey = std::make_pair(TType, Tindex);
     int fir,sec;
     if (TyI2I.find(FNodeKey) == TyI2I.end()){
         fir = initNode(FType, Findex);
@@ -138,8 +138,9 @@ void NetWorkSimulation::UpdateRateMap(double now){
 long long NetWorkSimulation::createTask(long long TaskID, double startTime, double TaskSize, int FType,int Findex,int TType,int Tindex){
     int fromIndex = TyI2I[std::pair<int,int>(FType,Findex)];
     int ToIndex = TyI2I[std::pair<int,int>(TType, Tindex)];
-    
-    return Task::CreateTask(TaskID, startTime, TaskSize, fromIndex, ToIndex)->getTaskID();
+    auto task = Task::CreateTask(TaskID, startTime, TaskSize, fromIndex, ToIndex);
+    Task::cv.notify_all();
+    return task->getTaskID();
 }
 
 void NetWorkSimulation::NextFinish(long long &TaskID, double &now){
@@ -155,7 +156,11 @@ void NetWorkSimulation::NextFinish(long long &TaskID, double &now){
 }
 
 void NetWorkSimulation::start(){
-    std::unique_lock<std::mutex> lock(TransEvent::mut);
-    TransEvent::needblock = false;
-    TransEvent::cv.notify_all();
+    std::thread FlashThread(&NetWorkSimulation::flashEvent,this);
+    FlashThread.detach();
+    {
+        std::unique_lock<std::mutex> lock(TransEvent::mut);
+        TransEvent::needblock = false;
+        TransEvent::cv.notify_all();
+    }
 }

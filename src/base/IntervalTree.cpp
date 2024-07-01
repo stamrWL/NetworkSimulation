@@ -319,7 +319,6 @@ void IntervalTree::Slice(double B) {
 	this->root->Slice(B);
 }
 
-
 void IntervalTree::extend(double rightB)
 {
 	uniqueLock();

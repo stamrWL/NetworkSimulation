@@ -22,9 +22,11 @@ public:
     Node(int index){
         this->index = index;
         NodeMap[index] = this;
+        this->routeMap = nullptr;
     };
 
-    void setRoutMap(std::shared_ptr<std::map<int,int>> _routeMap){
+    void setRoutMap(std::shared_ptr<std::map<int,int>> &_routeMap){
+        this->routeMap = nullptr;
         this->routeMap = _routeMap;
     };
 

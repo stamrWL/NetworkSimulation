@@ -1,6 +1,9 @@
 #include "./src/Simulation.h"
 #include "./src/net/Stamr_client.h"
 #include "./src/net/usst_Message.h"
+#include <thread>
+#include <vector>
+#include <set>
 
 int main(){
     // std::cout<<"hello world"<<std::endl;
@@ -23,33 +26,47 @@ int main(){
     
     usst_Message(client.Wait_function(client.ObtainHasAccess())).ObtainHasAccess(fromType,fromIndex,toType,toIndex);
     
-    for(int i = 0; i< fromType.size();i++){
-        std::vector<double> Rate,Delay,Time;
-        UsstMsgTypes f_id = client.ObtainAccessDataRate(fromType[i],fromIndex[i],toType[i],toIndex[i]);
-        auto msg = client.Wait_function(f_id);
-        auto msg2 = usst_Message(msg);
-        a.initLink(fromType[i],fromIndex[i],toType[i],toIndex[i],Time,Rate,Delay);
+    {
+        ThreadPool pool(30);
+        std::set<std::pair<int,int>> Set;
+        std::mutex mtx;
+
+        for(int i = 0; i< fromType.size();i++){
+            pool.enqueue([](int i,std::vector<int16_t>& fromType,std::vector<int16_t>& fromIndex, std::vector<int16_t>& toType, std::vector<int16_t>& toIndex,StamrClient& client,NetWorkSimulation& a,std::set<std::pair<int,int>> &Set,std::mutex * mtx){
+                std::vector<double> Rate,Delay,Time;
+                client.init_map();
+                UsstMsgTypes f_id = client.ObtainAccessDataRate(fromType[i],fromIndex[i],toType[i],toIndex[i]);
+                auto msg = client.Wait_function(f_id);
+                auto msg2 = usst_Message(msg);
+                msg2.ObtainAccessDataRate(Time,Rate,Delay);
+                {
+                    std::unique_lock<std::mutex> lock(*mtx);  
+                    int fo = fromType[i]*144 + fromIndex[i];
+                    int to = toType[i]*144 + toIndex[i];
+
+                    if(Set.find(std::make_pair(fo,to)) == Set.end()){
+                        Set.insert(std::make_pair(fo,to));
+                        a.initLink(fromType[i],fromIndex[i],toType[i],toIndex[i],Time,Rate,Delay);
+                    }
+                }
+            },i,std::ref(fromType),std::ref(fromIndex),std::ref(toType),std::ref(toIndex),std::ref(client),std::ref(a),std::ref(Set),&mtx);
+        }
+        pool.start();
+        sleep(1);
+        pool.waitAllFinish();
     }
-    
-    // long long taskID ;
-    // double endTime;
 
-    // a.initLink(0,0,0,1,timesteps,rateLists,LengthList);
-    // a.initLink(0,1,0,0,timesteps,rateLists,LengthList);
-    // a.initLink(0,0,0,2,timesteps,rateLists,LengthList);
-    // a.initLink(0,2,0,0,timesteps,rateLists,LengthList);
-    // a.initLink(0,2,0,1,timesteps,rateLists,LengthList);
-    // a.initLink(0,1,0,2,timesteps,rateLists,LengthList);
-
-    // taskID = a.createTask(1,0.1,0.3,0,0,0,1);
-    // taskID = a.createTask(2,0.101,(rand()%200)/150.0,0,1,0,0);
-    // taskID = a.createTask(3,0.102,(rand()%200)/150.0,0,0,0,1);
-    // taskID = a.createTask(0,0.2,1.2,0,0,0,1);
-
-    // a.start();
-
-    // a.NextFinish(taskID,endTime);
-    // std::cout<<taskID<<":"<<endTime<<std::endl;
+    for(double time =0 ;time<120;time+=0.2){
+        a.createTask(int(time/0.2),time,1,1,1,1,10);
+    }
+    a.start();
+    long long taskID ;
+    double endTime = 0;
+    for(;endTime<120;)
+    {
+        a.NextFinish(taskID,endTime);
+        std::cout<<taskID<<":"<<endTime<<std::endl;
+    }
 
     // a.NextFinish(taskID,endTime);
     // std::cout<<taskID<<":"<<endTime<<std::endl;

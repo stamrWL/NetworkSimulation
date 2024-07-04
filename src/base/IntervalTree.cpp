@@ -242,7 +242,7 @@ std::shared_ptr<TreeNode> TreeNode::releaseLeft(double B)
 		}
 		else
 		{
-			double Lvalue = leftNode == nullptr ? LDBL_MAX : leftNode->getValue();
+			double Lvalue = leftNode == nullptr ? DBL_MAX : leftNode->getValue();
 			double Rvalue = rightNode == nullptr ? -1 : rightNode->getValue();
 			value = Lvalue > Rvalue ? Rvalue : Lvalue;
 			leftB = leftNode->getLeftB();

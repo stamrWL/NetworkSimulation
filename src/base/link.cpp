@@ -1,27 +1,31 @@
 
 #include "link.h"
 
-std::map<std::pair<int,int>,std::shared_ptr<Link>> Link::linkMap;
+std::map<int,std::map<int,std::shared_ptr<Link>>> Link::linkMap;
 
 
 void Link::insertLinkMap(std::pair<int,int>& key,std::shared_ptr<Link>& value){
     int first = key.first;
     int second = key.second;
-    Link::linkMap[{first,second}] = value;
+    Link::linkMap[first][second] = value;
+    // printf("%d\n",Link::linkMap[first].size());
 }
 
 void Link::insertLinkMap(int first,int second,std::shared_ptr<Link>& value){
-    Link::linkMap[{first,second}] = value;
+    Link::linkMap[first][second] = value;
+    // printf("%d\n",Link::linkMap[first].size());
 }
 
 std::shared_ptr<Link> Link::getLinkMap(std::pair<int,int>& key){
-    return Link::linkMap[{key.first,key.second}];
+    int first = key.first;
+    int second = key.second;
+    return Link::linkMap[first][second];
 }
 
 std::shared_ptr<Link> Link::getLinkMap(int first,int second){
-    if(Link::linkMap.find({first,second}) == Link::linkMap.end())
-        throw("this line not define");
-    return Link::linkMap[{first,second}];
+    // if(Link::linkMap.find({first,second}) == Link::linkMap.end())
+    //     throw("this line not define");
+    return Link::linkMap[first][second];
 }
 
 Link::Link(int fromIndex,int ToIndex,std::shared_ptr<std::vector<std::pair<double,double>>> InitRate,std::shared_ptr<std::vector<std::pair<double,double>>> Delay,double stepTime){
@@ -47,7 +51,7 @@ std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, double InitRa
         DelayList->push_back(std::make_pair(i, Length/Link::lightRate));
     }
     auto link = std::make_shared<Link>(fromIndex, ToIndex, InitRateList, DelayList, stepTime);
-    Link::linkMap[std::pair<int,int>(fromIndex, ToIndex)] = link;
+    Link::insertLinkMap(fromIndex,ToIndex,link);
     return link;
 }
 
@@ -60,7 +64,9 @@ std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, std::vector<d
         Delay->push_back(std::make_pair(time, LengthList[i]/Link::lightRate));
     }
     auto link = std::make_shared<Link>(fromIndex, ToIndex, InitRate, Delay, stepTime);
-    Link::linkMap[std::pair<int,int>(fromIndex, ToIndex)] = link;
+    // Link::linkMap.emplace()
+    Link::insertLinkMap(fromIndex,ToIndex,link);
+    // Link::linkMap[{fromIndex, ToIndex}] = link;
     return link;
 }
 

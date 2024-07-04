@@ -7,7 +7,7 @@ void NetWorkSimulation::floydWarshall(std::vector<std::vector<double> >& graph, 
     for (int k = 0; k < n; k++) {
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                if (graph[i][k] != INT32_MAX && graph[k][j] != INT32_MAX && graph[i][k] + graph[k][j] < graph[i][j]) {
+                if (graph[i][k] != DBL_MAX && graph[k][j] != DBL_MAX && graph[i][k] + graph[k][j] < graph[i][j]) {
                     graph[i][j] = graph[i][k] + graph[k][j];
                     nextStep[i][j] = nextStep[i][k];
                 }
@@ -113,9 +113,11 @@ void NetWorkSimulation::initLink(int FType,int Findex,int TType,int Tindex,std::
 
 void NetWorkSimulation::UpdateLink(double now){
     std::vector<std::thread> threads;
-    for(auto &link:Link::linkMap){
-        std::thread t(&Link::Update, link.second, now);
-        threads.push_back(std::move(t));
+    for(auto &link_:Link::linkMap){
+        for(auto &link:link_.second){
+            std::thread t(&Link::Update, link.second, now);
+            threads.push_back(std::move(t));
+        }
     }
     for(auto &t:threads){
         t.join();
@@ -130,13 +132,15 @@ void NetWorkSimulation::UpdateRateMap(double now){
         dist[i][i] = 0;
         next[i][i] = i;
     }
-    for(auto &link:Link::linkMap){
-        int from = link.second->getFrom();
-        int to = link.second->getTo();
-        dist[from][to] = link.second->getValue(now);
-        dist[to][from] = link.second->getValue(now);
-        next[from][to] = to;
-        next[to][from] = from;
+    for(auto& link_:Link::linkMap){
+        for(auto& link:link_.second){
+            int from = link.second->getFrom();
+            int to = link.second->getTo();
+            dist[from][to] = link.second->getValue(now);
+            dist[to][from] = link.second->getValue(now);
+            next[from][to] = to;
+            next[to][from] = from;
+        }
     }
     floydWarshall(dist, next);
     for(auto &node:Node::NodeMap){

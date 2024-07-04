@@ -3,6 +3,7 @@
 #include "usst_Enum.h"
 #include <cstdint>
 #include <math.h>
+#include <float.h>
 #include "net_message.h"
 
 enum class UsstMsgTypes : uint32_t;

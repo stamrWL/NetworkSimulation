@@ -9,6 +9,13 @@
 #include "Task.h"
 
 class Task;
+class TransEvent;
+
+class CompareTransEvent{
+    public:
+    bool operator()(const std::shared_ptr<TransEvent> a,const  std::shared_ptr<TransEvent> b);
+};
+
 
 class TransEvent : public std::enable_shared_from_this<TransEvent>{
 private:
@@ -23,15 +30,15 @@ public:
     static std::mutex mut;
     static bool needblock;
     static std::condition_variable cv;
-    static std::priority_queue<std::shared_ptr<TransEvent>,std::vector<std::shared_ptr<TransEvent>>,std::less<std::shared_ptr<TransEvent>>> eventQueue;
+    static std::priority_queue<std::shared_ptr<TransEvent>,std::vector<std::shared_ptr<TransEvent>>,CompareTransEvent> eventQueue;
     static std::shared_ptr<TransEvent> CreateEvent(long long Taskid,int fIndex, int tIndex, double sTime, double eTime = -1);
 public:
     TransEvent(long long Taskid,int fIndex,int tIndex,double sTime,double eTime = -1);
     bool operator<(const TransEvent& e) const{
-    if(this->endTime == e.endTime)
-        return this->Eventid < e.Eventid;
-    else
-        return this->endTime < e.endTime;
+        if(this->endTime == e.endTime)
+            return this->Eventid < e.Eventid;
+        else
+            return this->endTime < e.endTime;
     }
     long long getEventid() const;
     std::shared_ptr<Task> getTask();

@@ -1,12 +1,16 @@
 #include "Event.h"
 
+bool CompareTransEvent::operator()(const std::shared_ptr<TransEvent> a,const  std::shared_ptr<TransEvent> b){
+    return a->getEndTime() > b->getEndTime();
+}
+
 long long TransEvent::eventCount;
 std::map<long long,std::shared_ptr<TransEvent>> TransEvent::eventMap;
 std::mutex TransEvent::mut;
 bool TransEvent::needblock = true;
 std::condition_variable TransEvent::cv;
 
-std::priority_queue<std::shared_ptr<TransEvent>,std::vector<std::shared_ptr<TransEvent>>,std::less<std::shared_ptr<TransEvent>>> TransEvent::eventQueue;
+std::priority_queue<std::shared_ptr<TransEvent>,std::vector<std::shared_ptr<TransEvent>>,CompareTransEvent> TransEvent::eventQueue;
 
 TransEvent::TransEvent(long long Taskid,int fIndex,int tIndex,double sTime,double eTime){
     this->Taskid = Taskid;

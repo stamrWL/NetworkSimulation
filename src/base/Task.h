@@ -8,6 +8,14 @@
 #include <condition_variable>
 #include "event.h"
 class TransEvent;
+class Task;
+
+class CompareTask{
+public:
+    bool operator()(const std::shared_ptr<Task> a,const std::shared_ptr<Task> b);
+};
+
+
 class Task{
 private:
     long long TaskID;
@@ -24,7 +32,7 @@ public:
     static std::mutex mtx;
     static std::condition_variable cv;
     static bool TaskHasFinish ;
-    static std::priority_queue<std::shared_ptr<Task>,std::vector<std::shared_ptr<Task>>,std::less<std::shared_ptr<Task>>> FinishTask;
+    static std::priority_queue<std::shared_ptr<Task>,std::vector<std::shared_ptr<Task>>,CompareTask> FinishTask;
 public:
     Task(long long TaskID,double startTime,double TaskSize,int fromIndex,int ToIndex);
     static std::shared_ptr<Task> CreateTask(long long TaskID, double startTime, double TaskSize, int fromIndex, int ToIndex);

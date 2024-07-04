@@ -109,9 +109,9 @@ void usst_Message::ObtainAccessDataRate(double* &Times ,double* &Rates,double* &
 
     
 void usst_Message::ObtainAccessDataRate(std::vector<double> &Time,std::vector<double> &Rate,std::vector<double> &Delay){
-if (msg.header.id == UsstMsgTypes::ObtainAccessDataRate)
+if (msg.header.id == UsstMsgTypes::ObtainAccessDataRate2)
     {
-        int16_t len = 0;
+        int32_t len = 0;
         double_t time_,rate_,delay_;
         msg >> len;
 
@@ -121,10 +121,10 @@ if (msg.header.id == UsstMsgTypes::ObtainAccessDataRate)
 
         for (int i = len - 1; i >= 0; i--)
         {
-            msg >> time_>> rate_>> delay_;
+            msg >> delay_>> rate_>> time_;
             Time[i] = time_;
-            Rate[i] = rate_;
-            Delay[i] = delay_;
+            Rate[i] = rate_ < 0 ? DBL_MAX: rate_;
+            Delay[i] = delay_ < 0 ? DBL_MAX: delay_;
         }
     }
 }

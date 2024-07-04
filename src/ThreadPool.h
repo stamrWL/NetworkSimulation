@@ -25,6 +25,7 @@ public:
     void blockRunNext();
     void unblockRunNext();
     void start();
+    void waitAllFinish();
     // void waitAllThread();
     template <class F, class... Args>
     auto enqueue(F &&f, Args &&...args)

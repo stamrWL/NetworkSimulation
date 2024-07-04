@@ -16,7 +16,7 @@ private:
     LinkTree* communication;
     std::shared_ptr<std::map<double,std::pair<double,double>>> RateDelayList;
 public:
-static std::map<std::pair<int,int>,std::shared_ptr<Link>> linkMap;
+static std::map<int,std::map<int,std::shared_ptr<Link>>> linkMap;
 static constexpr double lightRate = 299792458;
 static void insertLinkMap(std::pair<int,int>&,std::shared_ptr<Link>&);
 static void insertLinkMap(int,int,std::shared_ptr<Link>&);

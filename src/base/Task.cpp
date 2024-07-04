@@ -1,9 +1,15 @@
 #include "Task.h"
+bool CompareTask::operator()(const std::shared_ptr<Task> a,const std::shared_ptr<Task> b)
+{
+        return a->getEndTime() > b->getEndTime();
+    };
+
+
 bool Task::TaskHasFinish = false;
 std::map<long long, std::shared_ptr<Task>> Task::TaskMap;
 std::mutex Task::mtx;
 std::condition_variable Task::cv;
-std::priority_queue<std::shared_ptr<Task>, std::vector<std::shared_ptr<Task>>, std::less<std::shared_ptr<Task>>> Task::FinishTask;
+std::priority_queue<std::shared_ptr<Task>,std::vector<std::shared_ptr<Task>>,CompareTask> Task::FinishTask;
 
 Task::Task(long long TaskID, double startTime, double TaskSize, int fromIndex, int ToIndex)
 {

@@ -3,7 +3,28 @@
 
 std::map<std::pair<int,int>,std::shared_ptr<Link>> Link::linkMap;
 
-Link::Link(int fromIndex,int ToIndex,std::shared_ptr<std::vector<std::pair<double,double>>> InitRate,std::shared_ptr<std::vector<std::pair<double,double>>> Delay,double stepTime,double windows){
+
+void Link::insertLinkMap(std::pair<int,int>& key,std::shared_ptr<Link>& value){
+    int first = key.first;
+    int second = key.second;
+    Link::linkMap[{first,second}] = value;
+}
+
+void Link::insertLinkMap(int first,int second,std::shared_ptr<Link>& value){
+    Link::linkMap[{first,second}] = value;
+}
+
+std::shared_ptr<Link> Link::getLinkMap(std::pair<int,int>& key){
+    return Link::linkMap[{key.first,key.second}];
+}
+
+std::shared_ptr<Link> Link::getLinkMap(int first,int second){
+    if(Link::linkMap.find({first,second}) == Link::linkMap.end())
+        throw("this line not define");
+    return Link::linkMap[{first,second}];
+}
+
+Link::Link(int fromIndex,int ToIndex,std::shared_ptr<std::vector<std::pair<double,double>>> InitRate,std::shared_ptr<std::vector<std::pair<double,double>>> Delay,double stepTime){
     this->RateDelayList = nullptr;
     this->fromIndex = fromIndex;
 
@@ -14,10 +35,10 @@ Link::Link(int fromIndex,int ToIndex,std::shared_ptr<std::vector<std::pair<doubl
     }
     this->RateDelayList = RDMap;
     this->stepTime = stepTime;
-    this->communication = new LinkTree(InitRate->at(0).second,InitRate->at(0).first,windows,stepTime,this);
+    this->communication = new LinkTree(InitRate->at(0).second,InitRate->at(0).first,stepTime,this);
 }
 
-std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, double InitRate, double Length, double stepTime, double left, double right, double windows){
+std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, double InitRate, double Length, double stepTime, double left, double right){
     std::shared_ptr<std::vector<std::pair<double,double>>> InitRateList = std::make_shared<std::vector<std::pair<double,double>>>();
     std::shared_ptr<std::vector<std::pair<double,double>>> DelayList = std::make_shared<std::vector<std::pair<double,double>>>();
     left = int(left / stepTime) * stepTime;
@@ -25,12 +46,12 @@ std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, double InitRa
         InitRateList->push_back(std::make_pair(i, InitRate));
         DelayList->push_back(std::make_pair(i, Length/Link::lightRate));
     }
-    auto link = std::make_shared<Link>(fromIndex, ToIndex, InitRateList, DelayList, stepTime,  windows);
+    auto link = std::make_shared<Link>(fromIndex, ToIndex, InitRateList, DelayList, stepTime);
     Link::linkMap[std::pair<int,int>(fromIndex, ToIndex)] = link;
     return link;
 }
 
-std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, std::vector<double>& Time,std::vector<double>& RateList,std::vector<double>& LengthList, double stepTime, double windows){
+std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, std::vector<double>& Time,std::vector<double>& RateList,std::vector<double>& LengthList, double stepTime){
     std::shared_ptr<std::vector<std::pair<double,double>>> InitRate = std::make_shared<std::vector<std::pair<double,double>>>();
     std::shared_ptr<std::vector<std::pair<double,double>>> Delay = std::make_shared<std::vector<std::pair<double,double>>>();
     for(int i=0;i<Time.size();i++){
@@ -38,7 +59,7 @@ std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, std::vector<d
         InitRate->push_back(std::make_pair(time, RateList[i]));
         Delay->push_back(std::make_pair(time, LengthList[i]/Link::lightRate));
     }
-    auto link = std::make_shared<Link>(fromIndex, ToIndex, InitRate, Delay, stepTime,  windows);
+    auto link = std::make_shared<Link>(fromIndex, ToIndex, InitRate, Delay, stepTime);
     Link::linkMap[std::pair<int,int>(fromIndex, ToIndex)] = link;
     return link;
 }
@@ -60,7 +81,8 @@ double Link::getRate(double Now){
         upper--;
     }
     if(std::abs(Now - upper->first) > stepTime){
-        return 0;
+        printf("out of range\n");
+        return -1;
     }
     return upper->second.first;
 }
@@ -78,12 +100,11 @@ double Link::getDelay(double Now){
     return upper->second.second;
 }
 
-void Link::Update(double Now){
-    communication->Update(Now);
+bool Link::Update(double Now){
+    return communication->Update(Now);
 }
 
 double Link::trans(double start,double size){
-    // ���ؽ���ʱ��
     auto SE = communication->trans(start,size);
     double end = SE.second;
     return end;

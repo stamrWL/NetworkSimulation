@@ -1,13 +1,35 @@
 #include "node.h"
-std::map<int,Node*> Node::NodeMap;
+std::map<int, Node *> Node::NodeMap;
 
-void Node::acceptTask(std::shared_ptr<Task> task,double time){
+Node::Node(int index){
+    this->index = index;
+    // NodeMap[index] = this;
+    this->routeMap = nullptr;
+};
+
+Node* Node::CreateNode(int index){
+    auto a = new Node(index);
+    Node::NodeMap[index] = a;
+    return a;
+}
+
+void Node::setRoutMap(std::shared_ptr<std::map<int, int>> &_routeMap)
+{
+    this->routeMap = nullptr;
+    this->routeMap = _routeMap;
+};
+
+void Node::acceptTask(std::shared_ptr<Task> task, double time)
+{
     int ToIndex = task->getToIndex();
-    if(ToIndex != this->index){
+    if (ToIndex != this->index)
+    {
         int NextNode = (*this->routeMap)[ToIndex];
-        auto event = TransEvent::CreateEvent(task->getTaskID(),this->index,NextNode,time);
+        auto event = TransEvent::CreateEvent(task->getTaskID(), this->index, NextNode, time);
         this->Trans(event);
-    }else{
+    }
+    else
+    {
         task->setEndTime(time);
         std::unique_lock<std::mutex> lock(Task::mtx);
         Task::FinishTask.push(task);
@@ -16,11 +38,17 @@ void Node::acceptTask(std::shared_ptr<Task> task,double time){
     }
 }
 
-void Node::Trans(std::shared_ptr<TransEvent> event){
+void Node::Trans(std::shared_ptr<TransEvent> event)
+{
     auto task = event->getTask();
     double size = task->getTaskSize();
-    auto link = Link::linkMap[std::pair<int,int>(event->getFromIndex(),event->getToIndex())];
-    double endTime = link->trans(event->getStartTime(),size);
+    auto link = Link::getLinkMap(event->getFromIndex(), event->getToIndex());
+    double startTime = event->getStartTime();
+    double endTime = link->trans(startTime, size);
     event->setEndTime(endTime);
-    TransEvent::eventQueue.push(event);
+    {
+        std::unique_lock<std::mutex> lock(TransEvent::mut);
+        TransEvent::eventQueue.push(event);
+        TransEvent::cv.notify_all();
+    }
 }

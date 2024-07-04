@@ -1,42 +1,72 @@
 #include "LinkTree.h"
 
-void LinkTree::Update(double endTime){
-    endTime = int((endTime + stepTime)/stepTime);
-    if(LastUpdate > endTime)return;
-    while(endTime <= LastUpdate){
-        LinkB->changeDefualtValue(endTime,this->link->getRate(endTime));
-        endTime += stepTime;
+bool LinkTree::Update(double endTime)
+{
+    bool ans = true;
+    while (endTime > LastUpdate)
+    {
+        double rate = this->link->getRate(LastUpdate);
+        if (rate > 0)
+            LinkB->changeDefualtValue(LastUpdate, rate);
+        else
+        {
+            ans = false;
+            break;
+        }
+        LastUpdate += stepTime;
     }
-    LastUpdate = endTime;
+    return ans;
 }
 
-
-void LinkTree::releasLeft(double now){
-    double last = int((now - stepTime)/stepTime);
-    if(last >= LastLeft){
+void LinkTree::releasLeft(double now)
+{
+    double last = int((now - stepTime) / stepTime);
+    if (last >= LastLeft)
+    {
         LinkB->releaseLeft(last);
         LastLeft = last;
     }
 }
 
-double LinkTree::getRangeArea(double start, double end){
+double LinkTree::getRangeArea(double start, double end)
+{
     return LinkB->getRangeArea(start, end);
 }
 
-std::pair<double, double> LinkTree::trans(double start,double end,double value){
+std::pair<double, double> LinkTree::trans(double start, double end, double value)
+{
     // releasLeft(start);
-    Update(end);
-    LinkB->addValue(start,end,-1*value);
-    return std::pair<double,double>(start, end + this->link->getDelay(start));
+    bool has = Update(end);
+    if (has)
+        LinkB->addValue(start, end, -1 * value);
+    return std::pair<double, double>(start, has ? end + this->link->getDelay(start) : DBL_MAX);
 }
 
-std::pair<double, double> LinkTree::trans(double start,double size){
+std::pair<double, double> LinkTree::trans(double start, double size)
+{
     // releasLeft(start);
     std::vector<double> interval;
-    LinkB->ContinuousAllocated(start,size,interval);
-    if(interval.size() > 1)
-        Update(interval.at(interval.size() - 1));
-    auto ans = LinkB->addContinueValue(interval,size);
-    ans.second += this->link->getDelay(start);
+    LinkB->ContinuousAllocated(start, size, interval);
+    double endB = interval.at(interval.size()-1);
+    bool has = true;
+    // 更新区间，防止区间树未申请区域，导致后续速率为负数
+    while (has && endB == LinkB->getRightB())
+    {
+        has = Update(endB + size / LinkB->getDefualtValue());
+        LinkB->ContinuousAllocated(start, size, interval);
+        endB = interval.at(interval.size()-1);
+    }
+
+    std::pair<double, double> ans;
+    // 如果更新时发现数据错误，则消息损毁
+    if (has)
+    {
+        ans = LinkB->addContinueValue(interval, size);
+        ans.second += this->link->getDelay(start);
+    }
+    else
+    {
+        ans = std::make_pair(start, DBL_MAX);
+    }
     return ans;
 }

@@ -26,20 +26,26 @@ NetWorkSimulation::NetWorkSimulation(double nextUpdateLinkTime, double nextUpdat
     this->pool = new ThreadPool(int(PoolMax * 0.7));
     this->pool->setCallback([this]() -> void
                             {
-        std::unique_lock<std::mutex> lock(UpdatethreadPool);
         this->releaseThread(); 
     });
 };
 
-
-
 void NetWorkSimulation::flashEvent(){
     double UpdateLinkTime = 0;
     double UpdateRouteTime = 0;
+    std::shared_ptr<TransEvent> event;
     while(true){
-        std::unique_lock<std::mutex> lock(TransEvent::mut);
-        TransEvent::cv.wait(lock, []{return !TransEvent::needblock &&TransEvent::eventQueue.size() > 0;});
-        std::shared_ptr<TransEvent> event = TransEvent::eventQueue.top();
+        {
+            std::unique_lock<std::mutex> lock(TransEvent::mut);
+            TransEvent::cv.wait(lock, []{return !TransEvent::needblock &&TransEvent::eventQueue.size() > 0 ;});
+            event = TransEvent::eventQueue.top();
+        }
+        {
+            std::unique_lock<std::mutex> lock(Task::mtx);
+            Task::cv.wait(lock,[]{
+                return !Task::TaskHasFinish;
+            });
+        }
         if(event->getStartTime() > UpdateLinkTime){
             pool->blockRunNext();
             UpdateLink(event->getStartTime());
@@ -52,11 +58,16 @@ void NetWorkSimulation::flashEvent(){
             UpdateRouteTime += nextUpdateRouteMap;
             pool->unblockRunNext();
         }
-        TransEvent::eventQueue.pop();
-        pool->enqueue([](std::shared_ptr<TransEvent> &event){
+        {
+            std::unique_lock<std::mutex> lock(TransEvent::mut);
+            TransEvent::eventQueue.pop();
+        }
+        // event->finish();
+        initThread();
+        pool->enqueue([](std::shared_ptr<TransEvent> event){
             event->finish();
             return;
-        },std::ref(event));
+        },event);
     }
 }
 
@@ -70,13 +81,14 @@ void NetWorkSimulation::releaseThread(){
     std::unique_lock<std::mutex> lock(UpdatethreadPool);
     PoolSize--;
     this->cv.notify_all();
+    TransEvent::cv.notify_all();
 }
 
 int NetWorkSimulation::initNode(int FType,int Findex){
     std::pair<int, int> NodeKey = std::make_pair(FType, Findex);
     if (TyI2I.find({FType,Findex}) == TyI2I.end()){
         TyI2I[{FType,Findex}] = NodeCount++;
-        Node(TyI2I[{FType,Findex}]);
+        Node::CreateNode(TyI2I[{FType,Findex}]);
     }
     return TyI2I[{FType,Findex}];
 }
@@ -135,6 +147,7 @@ void NetWorkSimulation::UpdateRateMap(double now){
         node.second->setRoutMap(routeMap);
     }
 }
+
 long long NetWorkSimulation::createTask(long long TaskID, double startTime, double TaskSize, int FType,int Findex,int TType,int Tindex){
     int fromIndex = TyI2I[std::pair<int,int>(FType,Findex)];
     int ToIndex = TyI2I[std::pair<int,int>(TType, Tindex)];
@@ -152,7 +165,14 @@ void NetWorkSimulation::NextFinish(long long &TaskID, double &now){
     Task::FinishTask.pop();
     if(Task::FinishTask.empty()){
         Task::TaskHasFinish = false;
+        Task::cv.notify_all();
     }
+}
+
+void NetWorkSimulation::startEventFlash(){   
+    std::unique_lock<std::mutex> lock(TransEvent::mut);
+    TransEvent::needblock = false;
+    TransEvent::cv.notify_all();
 }
 
 void NetWorkSimulation::start(){
@@ -162,5 +182,12 @@ void NetWorkSimulation::start(){
         std::unique_lock<std::mutex> lock(TransEvent::mut);
         TransEvent::needblock = false;
         TransEvent::cv.notify_all();
+    }
+}
+
+void NetWorkSimulation::blockAll(){
+    {
+        std::unique_lock<std::mutex> lock(TransEvent::mut);
+        TransEvent::needblock = true;
     }
 }

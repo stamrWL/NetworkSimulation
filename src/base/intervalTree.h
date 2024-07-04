@@ -97,10 +97,12 @@ private:
 	double lastLeftB;
 	double windows;
 	double defualtValue;
+
 	std::mutex UpdateLock;
-	static int RCount;
-	static int WCount;
-	static std::condition_variable cv;
+	bool beforeRead;
+	int RCount;
+	int WCount;
+	std::condition_variable cv;
 	static thread_local int _hasShare;
 	static thread_local int _hasUnique;
 	void shareLock();
@@ -117,6 +119,7 @@ public:
 	IntervalTree(double defualtValue, double lastLeftB = 0, double windows = 30) {
 		this->root = std::make_shared<TreeNode>(lastLeftB, windows, defualtValue);
 		this->List = std::make_shared<TreeNode>(-1, -1, -1);
+		// 双向链表的头指针
 		this->root->setNextNode(this->List);
 		this->root->setLastNode(this->List);
 		this->List->setNextNode(this->root);
@@ -124,12 +127,18 @@ public:
 		this->windows = windows;
 		this->lastLeftB = lastLeftB;
 		this->defualtValue = defualtValue;
+		this->RCount = 0;
+		this->WCount = 0;
+		this->beforeRead = false;
 	}
 	void addValue(double LB, double RB, double value);
 	std::pair<double,double> addContinueValue(double LB,double Size);
 	std::pair<double,double> addContinueValue(std::vector<double>& interval,double Size);
 	double getValue(double point) ;
 	double getRangeArea(double start,double end) ;
+	double getDefualtValue();
+	double getRightB();
+	double getLeftB();
 	void releaseLeft(double B);
 	void intoNextWindows();
 	void intoNextWindows(double x);

@@ -5,6 +5,7 @@ std::map<long long,std::shared_ptr<TransEvent>> TransEvent::eventMap;
 std::mutex TransEvent::mut;
 bool TransEvent::needblock = true;
 std::condition_variable TransEvent::cv;
+
 std::priority_queue<std::shared_ptr<TransEvent>,std::vector<std::shared_ptr<TransEvent>>,std::less<std::shared_ptr<TransEvent>>> TransEvent::eventQueue;
 
 TransEvent::TransEvent(long long Taskid,int fIndex,int tIndex,double sTime,double eTime){
@@ -58,5 +59,5 @@ void TransEvent::finish(double endTime){
     if(endTime >= 0)
         this->endTime = endTime;
 
-    Node::NodeMap[this->toIndex]->acceptTask(Task::TaskMap[this->Taskid],endTime);  
+    Node::NodeMap[this->toIndex]->acceptTask(Task::TaskMap[this->Taskid],this->endTime);  
 }

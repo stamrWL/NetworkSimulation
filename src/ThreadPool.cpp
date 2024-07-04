@@ -80,8 +80,6 @@ ThreadPool::ThreadPool(size_t threads)
                 }
             });
 }
-
-
 // the destructor joins all threads
 ThreadPool::~ThreadPool()
 {

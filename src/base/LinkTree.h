@@ -18,14 +18,14 @@ protected:
 
     void releasLeft(double now); 
 public:
-    LinkTree(double initValue,double left,double windows,double stepTime,Link* link){
-        LastUpdate = initValue;
+    LinkTree(double initValue,double left,double stepTime,Link* link){
+        LastUpdate = 0;
         LastLeft = 0;
         this->stepTime = stepTime;
         this->link = link;
-        LinkB = new IntervalTree(initValue,left,windows);
+        LinkB = new IntervalTree(initValue,left,stepTime);
     }
-    void Update(double endTime);
+    bool Update(double endTime);
     double getRangeArea(double start, double end);
     std::pair<double, double> trans(double start,double end,double value);
     std::pair<double, double> trans(double start,double size);

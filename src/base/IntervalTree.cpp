@@ -4,11 +4,6 @@
 thread_local int IntervalTree::_hasShare = 0;
 thread_local int IntervalTree::_hasUnique = 0;
 
-std::condition_variable IntervalTree::cv;
-
-int IntervalTree::RCount = 0;
-int IntervalTree::WCount = 0;
-
 void TreeNode::Delete() {
 	if (NextNode != nullptr)
 		NextNode->setLastNode(LastNode);
@@ -76,7 +71,7 @@ void TreeNode::addValue(double LB, double RB, double AddValue)
 	{
 		if (leftNode == nullptr || rightNode == nullptr)
 		{
-			double MB = abs(2 * LB - leftB - rightB) > abs(2 * RB - leftB - rightB) ? RB : LB;
+			double MB = (rightB - RB) > (LB - leftB) ? RB : LB;
 			this->Slice(MB);
 		}
 		if (RB <= midB)
@@ -261,8 +256,8 @@ void IntervalTree::shareLock(){
 	
 	if(_hasUnique == 0 && _hasShare == 0){
 		std::unique_lock<std::mutex> lk(UpdateLock);
-		IntervalTree::cv.wait(lk, []{return IntervalTree::WCount == 0;});
-		IntervalTree::RCount += 1;
+		this->cv.wait(lk, [this]{return this->WCount == 0;});
+		this->RCount += 1;
 	}
 	_hasShare += 1;
 } 
@@ -271,12 +266,12 @@ void IntervalTree::uniqueLock(){
 	if(_hasUnique == 0)
 	{
 		std::unique_lock<std::mutex> lk(UpdateLock);
-		if(_hasShare != 0){
-			IntervalTree::RCount -= 1;
+		if(_hasShare != 0 && !beforeRead){
+			this->RCount -= 1;
+			beforeRead = true;
 		}
-		if(_hasUnique == 0){
-			IntervalTree::cv.wait(lk, []{return IntervalTree::WCount == 0 && IntervalTree::RCount == 0;});
-		}
+		this->cv.wait(lk, [this]{return this->WCount == 0 && this->RCount == 0;});
+		this->WCount += 1;
 	}
 	_hasUnique += 1;
 }
@@ -285,38 +280,38 @@ void IntervalTree::releaseShareLock(){
 	_hasShare -= 1;
 	if(_hasUnique == 0 && _hasShare == 0){
 		std::unique_lock<std::mutex> lk(UpdateLock);
-		IntervalTree::RCount -= 1;
-		IntervalTree::cv.notify_all();
+		this->RCount -= 1;
+		this->cv.notify_all();
 	}
 }
-
 
 void IntervalTree::releaseUniqueLock(){
 	_hasUnique --;
 	if(_hasUnique == 0)
 	{
 		std::unique_lock<std::mutex> lk(UpdateLock);
-		if(_hasUnique == 0){
-			IntervalTree::WCount -= 1;
+		if(beforeRead){
+			this->RCount += 1;
+			beforeRead = false;
 		}
-		if(_hasShare != 0){
-			IntervalTree::RCount += 1;
-		}
-		IntervalTree::cv.notify_all();
+		this->WCount -= 1;
+		this->cv.notify_all();
 	}
 }
 
-
-
 std::shared_ptr<TreeNode> IntervalTree::getInterval(double point) 
 {
-	return root->getInterval(point);
+	shareLock();
+	auto ans = root->getInterval(point);
+	releaseShareLock();
+	return ans;
 }
 
 void IntervalTree::Slice(double B) {
 	uniqueLock();
 	extend(B);
 	this->root->Slice(B);
+	releaseUniqueLock();
 }
 
 void IntervalTree::extend(double rightB)
@@ -326,6 +321,7 @@ void IntervalTree::extend(double rightB)
 		auto Last = List->getLastNode();
 		root = TreeNode::Create(root, rightB, defualtValue, List, Last);
 	}
+	releaseUniqueLock();
 }
 
 void IntervalTree::extend(double rightB, double value)
@@ -335,6 +331,7 @@ void IntervalTree::extend(double rightB, double value)
 		auto Last = List->getLastNode();
 		root = TreeNode::Create(root, rightB, value, List, Last);
 	}
+	releaseUniqueLock();
 }
 
 void IntervalTree::addValue(double LB, double RB, double value)
@@ -351,16 +348,17 @@ void IntervalTree::addValue(double LB, double RB, double value)
 		LB = LeftB;
 	}
 	this->root->addValue(LB, RB, value);
+	releaseUniqueLock();
 }
 
 std::pair<double,double> IntervalTree::addContinueValue(double LB,double Size){
-	shareLock();
 	intoNextWindows(LB);
 	std::vector<double> interval;
 	ContinuousAllocated(LB,Size,interval);
 	double start,sec,value;
 	int i = 0; 
 	start = interval[i++];
+	shareLock();
 	do{
 		if(i<interval.size()){
 			value = interval[i++];
@@ -375,33 +373,40 @@ std::pair<double,double> IntervalTree::addContinueValue(double LB,double Size){
 		addValue(start,sec,-1*value);
 		start = sec;
 	}while(i<interval.size());
+	releaseShareLock();
 	return std::pair<double,double>(interval[0],sec);
 }
 
 std::pair<double,double> IntervalTree::addContinueValue(std::vector<double>& interval,double Size){
-	shareLock();
 	double start,sec,value;
 	int i = 0; 
 	start = interval[i++];
-	while(Size > 0){
+	shareLock();
+	while(Size > 0.001){/////////
 		if(i<interval.size()){
 			value = interval[i++];
 			sec = interval[i++];
 		}else{
 			value = List->getLastNode()->getValue();
+			if(value <= 0){
+				value = defualtValue;
+			}
 			sec = start + Size/value;
 		}
 		addValue(start,sec,-1*value);
-		start = sec;
 		Size -= (sec - start) * value;
+		start = sec;
 	}
+	releaseShareLock();
 	return std::pair<double,double>(interval[0],sec);
 }
 
 double IntervalTree::getValue(double point) 
 {
 	shareLock();
-	return this->root->getValue(point);
+	double value = this->root->getValue(point);
+	releaseShareLock();
+	return value;
 }
 
 double IntervalTree::getRangeArea(double start,double end) {
@@ -425,7 +430,29 @@ double IntervalTree::getRangeArea(double start,double end) {
 		lastPoint = rightB;
 		Node = Node->getNextNode();
 	}
+	releaseShareLock();
 	return Area ;
+}
+
+double IntervalTree::getDefualtValue(){
+	shareLock();
+	auto value = defualtValue;
+	releaseShareLock();
+	return value;
+}
+
+double IntervalTree::getRightB(){
+	shareLock();
+	auto value = root->getRightB();
+	releaseShareLock();
+	return value;
+}
+
+double IntervalTree::getLeftB(){
+	shareLock();
+	auto value = root->getLeftB();
+	releaseShareLock();
+	return value;
 }
 
 void IntervalTree::releaseLeft(double B) {
@@ -436,6 +463,7 @@ void IntervalTree::releaseLeft(double B) {
 	if (RealseB > LB) {
 		root->releaseLeft(RealseB);
 	}
+	releaseUniqueLock();
 }
 
 void IntervalTree::intoNextWindows()
@@ -443,6 +471,7 @@ void IntervalTree::intoNextWindows()
 	uniqueLock();
 	double Right = (int((root->getRightB() - lastLeftB) / windows) + 1) * windows + lastLeftB;
 	extend(Right);
+	releaseUniqueLock();
 }
 
 void IntervalTree::intoNextWindows(double x)
@@ -452,23 +481,17 @@ void IntervalTree::intoNextWindows(double x)
 		double Right = (int((x - lastLeftB) / windows) + 1) * windows + lastLeftB;
 		extend(Right);
 	}
+	releaseUniqueLock();
 }
 
 void IntervalTree::changeDefualtValue(double now, double Value) {
 	intoNextWindows(now);
-	
-	shareLock();
-
 	double RB = root->getRightB();
 	double Pvalue = root->getRightValue(now);
 	if (Pvalue < defualtValue - Value && Pvalue != defualtValue) {
 		throw std::range_error("now has Task running");
 	}
-
-	releaseShareLock();
-
 	addValue(now, RB, Value - defualtValue);
-
 	uniqueLock();
 	defualtValue = Value;
 	releaseUniqueLock();
@@ -480,10 +503,10 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea){
 
 	intoNextWindows(startPoint);
 
-	shareLock();
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double leftArea = 0;
 	double ansPoint = startPoint;
+	shareLock();
 	while (Node != List && Node != nullptr)
 	{
 		if (Node->getValue() <= 0)
@@ -497,7 +520,7 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea){
 		}
 		if (leftArea >= targetArea)
 		{
-			return ansPoint;
+			break;
 		}
 		Node = Node->getNextNode();
 	}
@@ -509,12 +532,12 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea, s
 	// 返回的值为最接近(往后)满足高为hight，面积为targetArea的区块的起点
 
 	intoNextWindows(startPoint);
-
-	shareLock();
+	ans.clear();
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double leftArea = 0;
 	double ansPoint = startPoint;
 	ans.push_back(ansPoint);
+	shareLock();
 	while (Node != List && Node != nullptr)
 	{
 		if (Node->getValue() <= 0)
@@ -526,12 +549,12 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea, s
 		}
 		else
 		{
-			leftArea += Node->getValue() * (Node->getRightB() - Node->getLeftB());
+			leftArea += Node->getValue() * (Node->getRightB() - std::max(Node->getLeftB(),ansPoint));
 			if (leftArea >= targetArea)
 			{
 				ans.push_back(Node->getValue());
 				ans.push_back(Node->getRightB() - (leftArea - targetArea)/Node->getValue());
-				return ansPoint;
+				break;
 			}else{
 				ans.push_back(Node->getValue());
 				ans.push_back(Node->getRightB());
@@ -546,10 +569,10 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea, s
 double IntervalTree::AllocatedArea_DD(double startPoint, double targetArea)
 {
 	// 返回的值为从startPoint开始分配的高
-	shareLock();
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double hight = Node == List ? -1 : DBL_MAX;
 	// std::cout << viewList() << std::endl;
+	shareLock();
 	while (Node != List && hight > 0.001 && Node != nullptr)
 	{
 		double RB = Node->getRightB();
@@ -559,24 +582,23 @@ double IntervalTree::AllocatedArea_DD(double startPoint, double targetArea)
 			break;
 		Node = Node->getNextNode();
 	}
+	double ans = Node == List || hight < 0.001 || Node == nullptr ? -1 : hight;
 	releaseShareLock();
-	return Node == List || hight < 0.001 || Node == nullptr ? -1 : hight;
+	return ans;
 }
 
 double IntervalTree::AllocatedArea_DDD(double startPoint, double targetArea, double hight)
 {
-	shareLock();
 	// 返回的值为最接近(往后)满足高为hight，面积为targetArea的区块的起点
 	if (hight <= 0){
-		releaseShareLock();
 		return root->getRightB();
 	}
-
 	intoNextWindows(startPoint);
 
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double leftArea = 0;
 	double ansPoint = startPoint;
+	shareLock();
 	while (Node != List && Node != nullptr)
 	{
 		if (Node->getValue() < hight)
@@ -590,12 +612,13 @@ double IntervalTree::AllocatedArea_DDD(double startPoint, double targetArea, dou
 		}
 		if (leftArea >= targetArea)
 		{
-			return ansPoint;
+			break;
 		}
 		Node = Node->getNextNode();
 	}
+	double ans = hight > defualtValue ? -1 : ansPoint;
 	releaseShareLock();
-	return hight > defualtValue ? -1 : ansPoint;
+	return ans;
 }
 
 std::string IntervalTree::viewList() 

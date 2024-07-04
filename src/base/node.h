@@ -14,21 +14,15 @@ class Node
 private:
     int index;
     std::shared_ptr<std::map<int,int>> routeMap;
+    Node(int index);
     // int getNextNode(TransTask& event);
 public:
     static std::map<int,Node*> NodeMap;
 
 public:
-    Node(int index){
-        this->index = index;
-        NodeMap[index] = this;
-        this->routeMap = nullptr;
-    };
+    static Node* CreateNode(int index);
 
-    void setRoutMap(std::shared_ptr<std::map<int,int>> &_routeMap){
-        this->routeMap = nullptr;
-        this->routeMap = _routeMap;
-    };
+    void setRoutMap(std::shared_ptr<std::map<int,int>> &_routeMap);
 
     void acceptTask(std::shared_ptr<Task> task,double time);
 

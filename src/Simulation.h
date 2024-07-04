@@ -28,6 +28,7 @@ protected:
     int PoolSize;
     int PoolMax;
 
+    double lastTime = 0;
 public:
     NetWorkSimulation(double nextUpdateLinkTime, double nextUpdateRouteMap,double stepTime, int PoolMax = 10);
 
@@ -43,7 +44,11 @@ public:
     long long createTask(long long TaskID, double startTime, double TaskSize, int FType, int Findex, int TType, int Tindex);
     void NextFinish(long long &TaskID, double &now);
 
+    void startEventFlash();
+    void blockAll();
+
     void start();
+    void stop();
 };
 
 #endif

@@ -17,6 +17,9 @@ private:
     int NodeCount = 0;
     double stepTime;
     std::map<std::pair<int, int>, int> TyI2I;
+#ifdef TEST_DEBUG
+    std::map<int,std::pair<int, int>> I2TyI;
+#endif
     double nextUpdateLinkTime, nextUpdateRouteMap;
     std::condition_variable cv;
     std::mutex UpdatethreadPool;

@@ -10,6 +10,7 @@ void NetWorkSimulation::floydWarshall(std::vector<std::vector<double> >& graph, 
                 if (graph[i][k] != DBL_MAX && graph[k][j] != DBL_MAX && graph[i][k] + graph[k][j] < graph[i][j]) {
                     graph[i][j] = graph[i][k] + graph[k][j];
                     nextStep[i][j] = nextStep[i][k];
+                    // 最短路径合理？
                 }
             }
         }
@@ -46,13 +47,13 @@ void NetWorkSimulation::flashEvent(){
                 return !Task::TaskHasFinish;
             });
         }
-        if(event->getStartTime() > UpdateLinkTime){
+        if(event->getStartTime() >= UpdateLinkTime){
             pool->blockRunNext();
             UpdateLink(event->getStartTime());
             UpdateLinkTime += nextUpdateLinkTime;
             pool->unblockRunNext();
         }
-        if(event->getStartTime() > UpdateRouteTime){
+        if(event->getStartTime() >= UpdateRouteTime){
             pool->blockRunNext();
             UpdateRateMap(event->getStartTime());
             UpdateRouteTime += nextUpdateRouteMap;
@@ -88,6 +89,9 @@ int NetWorkSimulation::initNode(int FType,int Findex){
     std::pair<int, int> NodeKey = std::make_pair(FType, Findex);
     if (TyI2I.find({FType,Findex}) == TyI2I.end()){
         TyI2I[{FType,Findex}] = NodeCount++;
+#ifdef TEST_DEBUG
+        I2TyI[TyI2I[{FType,Findex}]] = {FType,Findex};
+#endif
         Node::CreateNode(TyI2I[{FType,Findex}]);
     }
     return TyI2I[{FType,Findex}];
@@ -115,8 +119,7 @@ void NetWorkSimulation::UpdateLink(double now){
     std::vector<std::thread> threads;
     for(auto &link_:Link::linkMap){
         for(auto &link:link_.second){
-            std::thread t(&Link::Update, link.second, now);
-            threads.push_back(std::move(t));
+            threads.emplace_back(&Link::Update, link.second, now);
         }
     }
     for(auto &t:threads){
@@ -137,15 +140,20 @@ void NetWorkSimulation::UpdateRateMap(double now){
             int from = link.second->getFrom();
             int to = link.second->getTo();
             dist[from][to] = link.second->getValue(now);
-            dist[to][from] = link.second->getValue(now);
-            next[from][to] = to;
-            next[to][from] = from;
+            next[from][to] = dist[from][to] != DBL_MAX?to:INT32_MAX;
         }
     }
     floydWarshall(dist, next);
     for(auto &node:Node::NodeMap){
         auto routeMap = std::make_shared<std::map<int,int>>();
         for(int i=0;i<n;i++){
+#ifdef TEST_DEBUG
+            if(next[node.first][i] == INT32_MAX){
+                // 为什么存在未链接的节点
+                std::cout<<I2TyI[node.first].first<<","<<I2TyI[node.first].second<<std::endl;
+                std::cout<<I2TyI[i].first<<","<<I2TyI[i].second<<std::endl;
+            }
+#endif
             (*routeMap)[i] = next[node.first][i];
         }
         node.second->setRoutMap(routeMap);

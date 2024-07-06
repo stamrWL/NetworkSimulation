@@ -2,7 +2,7 @@
 bool CompareTask::operator()(const std::shared_ptr<Task> a,const std::shared_ptr<Task> b)
 {
         return a->getEndTime() > b->getEndTime();
-    };
+};
 
 
 bool Task::TaskHasFinish = false;

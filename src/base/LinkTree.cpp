@@ -3,7 +3,7 @@
 bool LinkTree::Update(double endTime)
 {
     bool ans = true;
-    while (endTime > LastUpdate)
+    while (endTime >= LastUpdate)
     {
         double rate = this->link->getRate(LastUpdate);
         if (rate > 0)

@@ -76,6 +76,9 @@ double Link::getValue(double Now){
     double time = int(Now/stepTime)*stepTime;
     double Area = communication->getRangeArea(time,time + stepTime);
     double Rate = getRate(time);
+    if(Rate<0){
+        printf(" ");
+    }
     return Rate>0?(Rate * stepTime - Area)/Rate:DBL_MAX;
 }
 
@@ -87,7 +90,7 @@ double Link::getRate(double Now){
         upper--;
     }
     if(std::abs(Now - upper->first) > stepTime){
-        printf("out of range\n");
+        // printf("out of range\n");
         return -1;
     }
     return upper->second.first;

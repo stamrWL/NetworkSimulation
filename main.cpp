@@ -17,17 +17,17 @@ int main(){
     usst_Message(client.Wait_function(client.ObtainNumOfGS())).ObtainNumOfGS(GSsize);
     usst_Message(client.Wait_function(client.ObtainNumOfSats())).ObtainNumOfSats(SatSize);
 
-    NetWorkSimulation a(2,3,stepTime,5);
+    NetWorkSimulation a(2,3,stepTime,10);
 
-    std::vector<double> timesteps = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    std::vector<double> rateLists = {10,12,11,12,11,14,13,12,11,12,14};
-    std::vector<double> LengthList = {3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5};
+    // std::vector<double> timesteps = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    // std::vector<double> rateLists = {10,12,11,12,11,14,13,12,11,12,14};
+    // std::vector<double> LengthList = {3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5,3.12e5};
     std::vector<int16_t> fromType,fromIndex,toType,toIndex;
     
     usst_Message(client.Wait_function(client.ObtainHasAccess())).ObtainHasAccess(fromType,fromIndex,toType,toIndex);
     
     {
-        ThreadPool pool(30);
+        ThreadPool pool(10);
         std::set<std::pair<int,int>> Set;
         std::mutex mtx;
 
@@ -65,7 +65,7 @@ int main(){
     for(;endTime<120;)
     {
         a.NextFinish(taskID,endTime);
-        std::cout<<taskID<<":"<<endTime<<std::endl;
+        std::cout<<taskID<<":"<<endTime - taskID*0.2<<std::endl;
     }
 
     // a.NextFinish(taskID,endTime);

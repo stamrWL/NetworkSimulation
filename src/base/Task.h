@@ -47,7 +47,7 @@ public:
     double getTaskSize()const{return TaskSize;};
     void setEndTime(double endTime){this->endTime = endTime;};
     void addEvent(std::shared_ptr<TransEvent> Event){
-        this->EventList.push_back(Event);
+        this->EventList.push_back(std::move(Event));
     };
 };
 

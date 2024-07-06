@@ -258,6 +258,7 @@ void IntervalTree::shareLock(){
 		std::unique_lock<std::mutex> lk(UpdateLock);
 		this->cv.wait(lk, [this]{return this->WCount == 0;});
 		this->RCount += 1;
+		beforeRead = false;
 	}
 	_hasShare += 1;
 } 

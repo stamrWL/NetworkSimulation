@@ -23,7 +23,7 @@ private:
     double nextUpdateLinkTime, nextUpdateRouteMap;
     std::condition_variable cv;
     std::mutex UpdatethreadPool;
-    ThreadPool *pool;
+    ThreadPool *pool,*UpdatePool;
 
 protected:
     void floydWarshall(std::vector<std::vector<double>> &graph, std::vector<std::vector<int>> &nextStep);

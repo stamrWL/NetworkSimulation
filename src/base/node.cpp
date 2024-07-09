@@ -8,6 +8,9 @@ Node::Node(int index){
 };
 
 Node* Node::CreateNode(int index){
+    #if __cplusplus >= 201703L
+        // std::cout<<"C++17"<<std::endl;
+    #endif
     auto a = new Node(index);
     Node::NodeMap[index] = a;
     return a;

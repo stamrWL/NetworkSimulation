@@ -1,9 +1,6 @@
 ﻿
 #include "intervalTree.h"
 
-thread_local int IntervalTree::_hasShare = 0;
-thread_local int IntervalTree::_hasUnique = 0;
-
 void TreeNode::Delete() {
 	if (NextNode != nullptr)
 		NextNode->setLastNode(LastNode);
@@ -253,91 +250,68 @@ std::shared_ptr<TreeNode> TreeNode::releaseLeft(double B)
 
 
 void IntervalTree::shareLock(){
-	
-	if(_hasUnique == 0 && _hasShare == 0){
-		std::unique_lock<std::mutex> lk(UpdateLock);
-		this->cv.wait(lk, [this]{return this->WCount == 0;});
-		this->RCount += 1;
-		beforeRead = false;
-	}
-	_hasShare += 1;
+	// rwLock.rwMutex.shareLock(rwLock);
+	MTX.lock();
 } 
 
 void IntervalTree::uniqueLock(){
-	if(_hasUnique == 0)
-	{
-		std::unique_lock<std::mutex> lk(UpdateLock);
-		if(_hasShare != 0 && !beforeRead){
-			this->RCount -= 1;
-			beforeRead = true;
-		}
-		this->cv.wait(lk, [this]{return this->WCount == 0 && this->RCount == 0;});
-		this->WCount += 1;
-	}
-	_hasUnique += 1;
+	// rwLock.rwMutex.uniqueLock(rwLock);
+	MTX.lock();
 }
 
 void IntervalTree::releaseShareLock(){
-	_hasShare -= 1;
-	if(_hasUnique == 0 && _hasShare == 0){
-		std::unique_lock<std::mutex> lk(UpdateLock);
-		this->RCount -= 1;
-		this->cv.notify_all();
-	}
+	// rwLock.rwMutex.releaseShareLock(rwLock);
+	MTX.unlock();
 }
 
 void IntervalTree::releaseUniqueLock(){
-	_hasUnique --;
-	if(_hasUnique == 0)
-	{
-		std::unique_lock<std::mutex> lk(UpdateLock);
-		if(beforeRead){
-			this->RCount += 1;
-			beforeRead = false;
-		}
-		this->WCount -= 1;
-		this->cv.notify_all();
-	}
+	// rwLock.rwMutex.releaseUniqueLock(rwLock);
+	MTX.unlock();
 }
 
 std::shared_ptr<TreeNode> IntervalTree::getInterval(double point) 
 {
-	shareLock();
+	// shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	auto ans = root->getInterval(point);
-	releaseShareLock();
+	// releaseShareLock();
 	return ans;
 }
 
 void IntervalTree::Slice(double B) {
-	uniqueLock();
+	// uniqueLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	extend(B);
 	this->root->Slice(B);
-	releaseUniqueLock();
+	// releaseUniqueLock();
 }
 
 void IntervalTree::extend(double rightB)
 {
-	uniqueLock();
+	// uniqueLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	while (this->root->getRightB() < rightB) {
 		auto Last = List->getLastNode();
 		root = TreeNode::Create(root, rightB, defualtValue, List, Last);
 	}
-	releaseUniqueLock();
+	// releaseUniqueLock();
 }
 
 void IntervalTree::extend(double rightB, double value)
 {
-	uniqueLock();
+	// uniqueLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	while (this->root->getRightB() < rightB) {
 		auto Last = List->getLastNode();
 		root = TreeNode::Create(root, rightB, value, List, Last);
 	}
-	releaseUniqueLock();
+	// releaseUniqueLock();
 }
 
 void IntervalTree::addValue(double LB, double RB, double value)
 {
-	uniqueLock();
+	// uniqueLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	double rightB = root->getRightB();
 	double LeftB = root->getLeftB();
 	if (rightB < RB)
@@ -349,7 +323,7 @@ void IntervalTree::addValue(double LB, double RB, double value)
 		LB = LeftB;
 	}
 	this->root->addValue(LB, RB, value);
-	releaseUniqueLock();
+	// releaseUniqueLock();
 }
 
 std::pair<double,double> IntervalTree::addContinueValue(double LB,double Size){
@@ -359,7 +333,8 @@ std::pair<double,double> IntervalTree::addContinueValue(double LB,double Size){
 	double start,sec,value;
 	int i = 0; 
 	start = interval[i++];
-	shareLock();
+	// // shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	do{
 		if(i<interval.size()){
 			value = interval[i++];
@@ -374,7 +349,7 @@ std::pair<double,double> IntervalTree::addContinueValue(double LB,double Size){
 		addValue(start,sec,-1*value);
 		start = sec;
 	}while(i<interval.size());
-	releaseShareLock();
+	// releaseShareLock();
 	return std::pair<double,double>(interval[0],sec);
 }
 
@@ -382,7 +357,8 @@ std::pair<double,double> IntervalTree::addContinueValue(std::vector<double>& int
 	double start,sec,value;
 	int i = 0; 
 	start = interval[i++];
-	shareLock();
+	// // shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	while(Size > 0.001){/////////
 		if(i<interval.size()){
 			value = interval[i++];
@@ -398,20 +374,22 @@ std::pair<double,double> IntervalTree::addContinueValue(std::vector<double>& int
 		Size -= (sec - start) * value;
 		start = sec;
 	}
-	releaseShareLock();
+	// releaseShareLock();
 	return std::pair<double,double>(interval[0],sec);
 }
 
 double IntervalTree::getValue(double point) 
 {
-	shareLock();
+	// // shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	double value = this->root->getValue(point);
-	releaseShareLock();
+	// releaseShareLock();
 	return value;
 }
 
 double IntervalTree::getRangeArea(double start,double end) {
-	shareLock();
+	// // shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	double RB = root->getRightB();
 	double Area = 0;
 	if(RB < end){
@@ -431,58 +409,64 @@ double IntervalTree::getRangeArea(double start,double end) {
 		lastPoint = rightB;
 		Node = Node->getNextNode();
 	}
-	releaseShareLock();
+	// releaseShareLock();
 	return Area ;
 }
 
 double IntervalTree::getDefualtValue(){
-	shareLock();
+	// shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	auto value = defualtValue;
-	releaseShareLock();
+	// releaseShareLock();
 	return value;
 }
 
 double IntervalTree::getRightB(){
-	shareLock();
+	// shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	auto value = root->getRightB();
-	releaseShareLock();
+	// releaseShareLock();
 	return value;
 }
 
 double IntervalTree::getLeftB(){
-	shareLock();
+	// shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	auto value = root->getLeftB();
-	releaseShareLock();
+	// releaseShareLock();
 	return value;
 }
 
 void IntervalTree::releaseLeft(double B) {
-	uniqueLock();
+	// uniqueLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	intoNextWindows(B);
 	double RealseB = int((B - lastLeftB) / windows - 1) * windows + lastLeftB;
 	double LB = root->getLeftB();
 	if (RealseB > LB) {
 		root->releaseLeft(RealseB);
 	}
-	releaseUniqueLock();
+	// releaseUniqueLock();
 }
 
 void IntervalTree::intoNextWindows()
 {
-	uniqueLock();
+	// uniqueLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	double Right = (int((root->getRightB() - lastLeftB) / windows) + 1) * windows + lastLeftB;
 	extend(Right);
-	releaseUniqueLock();
+	// releaseUniqueLock();
 }
 
 void IntervalTree::intoNextWindows(double x)
 {
-	uniqueLock();
+	// uniqueLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	if (x >= root->getRightB()) {
 		double Right = (int((x - lastLeftB) / windows) + 1) * windows + lastLeftB;
 		extend(Right);
 	}
-	releaseUniqueLock();
+	// releaseUniqueLock();
 }
 
 void IntervalTree::changeDefualtValue(double now, double Value) {
@@ -493,9 +477,10 @@ void IntervalTree::changeDefualtValue(double now, double Value) {
 		throw std::range_error("now has Task running");
 	}
 	addValue(now, RB, Value - defualtValue);
-	uniqueLock();
+	// uniqueLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	defualtValue = Value;
-	releaseUniqueLock();
+	// releaseUniqueLock();
 }
 
 
@@ -507,7 +492,8 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea){
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double leftArea = 0;
 	double ansPoint = startPoint;
-	shareLock();
+	// shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	while (Node != List && Node != nullptr)
 	{
 		if (Node->getValue() <= 0)
@@ -525,7 +511,7 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea){
 		}
 		Node = Node->getNextNode();
 	}
-	releaseShareLock();
+	// releaseShareLock();
 	return List->getRightB();
 }
 
@@ -538,7 +524,8 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea, s
 	double leftArea = 0;
 	double ansPoint = startPoint;
 	ans.push_back(ansPoint);
-	shareLock();
+	// shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	while (Node != List && Node != nullptr)
 	{
 		if (Node->getValue() <= 0)
@@ -563,7 +550,7 @@ double IntervalTree::ContinuousAllocated(double startPoint, double targetArea, s
 		}
 		Node = Node->getNextNode();
 	}
-	releaseShareLock();
+	// releaseShareLock();
 	return ansPoint;
 }
 
@@ -573,7 +560,8 @@ double IntervalTree::AllocatedArea_DD(double startPoint, double targetArea)
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double hight = Node == List ? -1 : DBL_MAX;
 	// std::cout << viewList() << std::endl;
-	shareLock();
+	// shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	while (Node != List && hight > 0.001 && Node != nullptr)
 	{
 		double RB = Node->getRightB();
@@ -584,7 +572,7 @@ double IntervalTree::AllocatedArea_DD(double startPoint, double targetArea)
 		Node = Node->getNextNode();
 	}
 	double ans = Node == List || hight < 0.001 || Node == nullptr ? -1 : hight;
-	releaseShareLock();
+	// releaseShareLock();
 	return ans;
 }
 
@@ -599,7 +587,8 @@ double IntervalTree::AllocatedArea_DDD(double startPoint, double targetArea, dou
 	std::shared_ptr<TreeNode> Node = getInterval(startPoint);
 	double leftArea = 0;
 	double ansPoint = startPoint;
-	shareLock();
+	// shareLock();
+	std::unique_lock<std::recursive_mutex> lock(MTX);
 	while (Node != List && Node != nullptr)
 	{
 		if (Node->getValue() < hight)
@@ -618,7 +607,7 @@ double IntervalTree::AllocatedArea_DDD(double startPoint, double targetArea, dou
 		Node = Node->getNextNode();
 	}
 	double ans = hight > defualtValue ? -1 : ansPoint;
-	releaseShareLock();
+	// releaseShareLock();
 	return ans;
 }
 

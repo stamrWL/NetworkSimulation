@@ -32,6 +32,15 @@ NetWorkSimulation::NetWorkSimulation(double nextUpdateLinkTime, double nextUpdat
 };
 
 void NetWorkSimulation::flashEvent(){
+    #if __cplusplus >= 201703L
+        std::cout << "C++17" << std::endl;
+    #elif __cplusplus >= 201402L
+        std::cout << "C++14" << std::endl;
+    #elif __cplusplus >= 201103L
+        std::cout << "C++11" << std::endl;
+    #else
+        std::cout << "Pre-C++11" << std::endl;
+    #endif
     double UpdateLinkTime = 0;
     double UpdateRouteTime = 0;
     std::shared_ptr<TransEvent> event;
@@ -119,11 +128,13 @@ void NetWorkSimulation::UpdateLink(double now){
     std::vector<std::thread> threads;
     for(auto &link_:Link::linkMap){
         for(auto &link:link_.second){
+            // link.second->Update(now);
             threads.emplace_back(&Link::Update, link.second, now);
         }
-    }
-    for(auto &t:threads){
-        t.join();
+        for(auto &t:threads){
+            t.join();
+        }
+        threads.clear();
     }
 }
 

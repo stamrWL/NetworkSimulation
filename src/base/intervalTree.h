@@ -8,8 +8,7 @@
 #include <memory>
 #include <vector>
 #include <cfloat>
-#include <mutex>
-#include <condition_variable>
+#include "RWMutex.h"
 
 class TreeNode : public std::enable_shared_from_this<TreeNode>{
 private:
@@ -98,13 +97,8 @@ private:
 	double windows;
 	double defualtValue;
 
-	std::mutex UpdateLock;
-	bool beforeRead;
-	int RCount;
-	int WCount;
-	std::condition_variable cv;
-	static thread_local int _hasShare;
-	static thread_local int _hasUnique;
+
+	// RWMutex rwLock;
 	void shareLock();
 	void releaseShareLock();
 	void uniqueLock();
@@ -116,6 +110,8 @@ protected:
 	void extend(double rightB);
 	void extend(double rightB, double value);
 public:
+	std::recursive_mutex MTX;
+
 	IntervalTree(double defualtValue, double lastLeftB = 0, double windows = 30) {
 		this->root = std::make_shared<TreeNode>(lastLeftB, windows, defualtValue);
 		this->List = std::make_shared<TreeNode>(-1, -1, -1);
@@ -127,9 +123,6 @@ public:
 		this->windows = windows;
 		this->lastLeftB = lastLeftB;
 		this->defualtValue = defualtValue;
-		this->RCount = 0;
-		this->WCount = 0;
-		this->beforeRead = false;
 	}
 	void addValue(double LB, double RB, double value);
 	std::pair<double,double> addContinueValue(double LB,double Size);

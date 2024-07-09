@@ -71,8 +71,7 @@ std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, std::vector<d
 }
 
 double Link::getValue(double Now){
-    // һ�����ڹ���·�ɱ��Ĳ���
-    // �˴�ʹ����һ��steptime�ڵĴ������ʱ��
+    
     double time = int(Now/stepTime)*stepTime;
     double Area = communication->getRangeArea(time,time + stepTime);
     double Rate = getRate(time);

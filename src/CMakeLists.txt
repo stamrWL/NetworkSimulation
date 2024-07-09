@@ -3,9 +3,13 @@ add_subdirectory(base)
 
 add_subdirectory(net)
 
-add_library(Simulation_ SHARED Simulation.cpp ThreadPool.cpp)
+add_library(Simulation_ STATIC Simulation.cpp ThreadPool.cpp)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fpermissive")
+set_target_properties(  Simulation_ 
+                        PROPERTIES
+                        CXX_STANDARD 17
+                        CXX_EXTENSIONS off
+                        )
 
 target_include_directories(Simulation_ PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

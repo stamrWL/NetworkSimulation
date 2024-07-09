@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <cmath>
 #include <queue>
+#include <set>
 #include "node.h"
 #include "Task.h"
 
@@ -32,6 +33,9 @@ public:
     static std::condition_variable cv;
     static std::priority_queue<std::shared_ptr<TransEvent>,std::vector<std::shared_ptr<TransEvent>>,CompareTransEvent> eventQueue;
     static std::shared_ptr<TransEvent> CreateEvent(long long Taskid,int fIndex, int tIndex, double sTime, double eTime = -1);
+#ifdef TEST_DEBUG
+    static std::set<std::tuple<long long,int,int>> testSet;
+#endif
 public:
     TransEvent(long long Taskid,int fIndex,int tIndex,double sTime,double eTime = -1);
     bool operator<(const TransEvent& e) const{

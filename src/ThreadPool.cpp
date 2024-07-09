@@ -37,7 +37,7 @@ void ThreadPool::start()
 void ThreadPool::waitAllFinish(){
     std::unique_lock<std::mutex> lock(runNextmut);
     conditionRun.wait(lock, [this]() -> bool
-                            { return runningThread == 0; });
+                            { return runningThread == 0 && this->tasks.empty(); });
 }
 
 // the constructor just launches some amount of workers

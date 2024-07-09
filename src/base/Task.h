@@ -7,6 +7,11 @@
 #include <mutex>
 #include <condition_variable>
 #include "event.h"
+#ifdef TEST_DEBUG
+#include <sstream>
+#include <string>
+#endif
+
 class TransEvent;
 class Task;
 
@@ -27,6 +32,7 @@ private:
 
 protected:
     std::vector<std::shared_ptr<TransEvent>> EventList;
+    std::mutex EListMTX;
 public:
     static std::map<long long, std::shared_ptr<Task>> TaskMap;
     static std::mutex mtx;
@@ -46,7 +52,16 @@ public:
     double getEndTime()const{return endTime;};
     double getTaskSize()const{return TaskSize;};
     void setEndTime(double endTime){this->endTime = endTime;};
+#ifdef TEST_DEBUG
+    std::shared_ptr<TransEvent> getLastEvent()const{
+        return this->EventList.at(this->EventList.size()>=2?this->EventList.size()-2:0);
+    }
+
+    std::string viewEvent();
+#endif
+
     void addEvent(std::shared_ptr<TransEvent> Event){
+        std::unique_lock<std::mutex> lock(EListMTX);
         this->EventList.push_back(std::move(Event));
     };
 };

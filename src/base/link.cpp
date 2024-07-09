@@ -2,9 +2,11 @@
 #include "link.h"
 
 std::map<int,std::map<int,std::shared_ptr<Link>>> Link::linkMap;
+std::mutex Link::SLMTX;
 
 
 void Link::insertLinkMap(std::pair<int,int>& key,std::shared_ptr<Link>& value){
+    std::unique_lock<std::mutex> lock(Link::SLMTX);
     int first = key.first;
     int second = key.second;
     Link::linkMap[first][second] = value;
@@ -12,17 +14,20 @@ void Link::insertLinkMap(std::pair<int,int>& key,std::shared_ptr<Link>& value){
 }
 
 void Link::insertLinkMap(int first,int second,std::shared_ptr<Link>& value){
+    std::unique_lock<std::mutex> lock(Link::SLMTX);
     Link::linkMap[first][second] = value;
     // printf("%d\n",Link::linkMap[first].size());
 }
 
 std::shared_ptr<Link> Link::getLinkMap(std::pair<int,int>& key){
+    std::unique_lock<std::mutex> lock(Link::SLMTX);
     int first = key.first;
     int second = key.second;
     return Link::linkMap[first][second];
 }
 
 std::shared_ptr<Link> Link::getLinkMap(int first,int second){
+    std::unique_lock<std::mutex> lock(Link::SLMTX);
     // if(Link::linkMap.find({first,second}) == Link::linkMap.end())
     //     throw("this line not define");
     return Link::linkMap[first][second];
@@ -71,22 +76,25 @@ std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, std::vector<d
 }
 
 double Link::getValue(double Now){
-    
+    // Bandwidth-Delay Product, BDP
     double time = int(Now/stepTime)*stepTime;
     double Area = communication->getRangeArea(time,time + stepTime);
+    // 未被占用的总字节
+    double delay = getDelay(time);
     double Rate = getRate(time);
-    if(Rate<0){
-        printf(" ");
-    }
-    return Rate>0?(Rate * stepTime - Area)/Rate:DBL_MAX;
+    // if(Rate<0){
+    //     printf(" ");
+    // }
+    return Rate>0?(Rate * stepTime - Area + 0.1)*delay/Rate:DBL_MAX;
 }
 
 double Link::getRate(double Now){
     auto upper = this->RateDelayList->upper_bound(Now);
-    if(upper == this->RateDelayList->begin()){
+    if(upper == this->RateDelayList->begin() && std::abs(upper->first - Now) <= 0.001){
         return 0;
     }else{
-        upper--;
+        if(upper != this->RateDelayList->begin())
+            upper--;
     }
     if(std::abs(Now - upper->first) > stepTime){
         // printf("out of range\n");

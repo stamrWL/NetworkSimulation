@@ -5,10 +5,10 @@
 #     message(STATUS "Building on Windows")
 # endif()
 
-# find_package(asio CONFIG REQUIRED)
-# target_link_libraries(NetLib PRIVATE asio::asio)
+find_package(asio CONFIG REQUIRED)
 
-add_library(NetLib STATIC usst_Message.cpp Stamr_client.cpp)
+add_library(NetLib STATIC usst_Message.cpp Stamr_client.cpp )
+target_link_libraries(NetLib asio::asio ws2_32)
 
 set_target_properties(  NetLib 
                         PROPERTIES

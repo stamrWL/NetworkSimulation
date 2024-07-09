@@ -41,6 +41,12 @@ void NetWorkSimulation::flashEvent(){
     #else
         std::cout << "Pre-C++11" << std::endl;
     #endif
+
+    #ifdef TEST_DEBUG
+    std::set<std::tuple<long long,int,int>> test;
+    #endif
+
+
     double UpdateLinkTime = 0;
     double UpdateRouteTime = 0;
     std::shared_ptr<TransEvent> event;
@@ -49,6 +55,7 @@ void NetWorkSimulation::flashEvent(){
             std::unique_lock<std::mutex> lock(TransEvent::mut);
             TransEvent::cv.wait(lock, []{return !TransEvent::needblock &&TransEvent::eventQueue.size() > 0 ;});
             event = TransEvent::eventQueue.top();
+            TransEvent::eventQueue.pop();
         }
         {
             std::unique_lock<std::mutex> lock(Task::mtx);
@@ -56,6 +63,22 @@ void NetWorkSimulation::flashEvent(){
                 return !Task::TaskHasFinish;
             });
         }
+        #ifdef TEST_DEBUG
+        long long Tid = event->getTask()->getTaskID();
+        int FromIndex = event->getFromIndex();
+        int ToIndex = event->getToIndex();
+        if(test.find({Tid,FromIndex,ToIndex}) != test.end()){
+            std::cout << "Event ID: " << Tid << std::endl;
+            // assert(false);
+        }  
+        test.insert({Tid,FromIndex,ToIndex}); 
+
+        // if(event->getTask()->getLastEvent()->getEventid() != event->getEventid()&&event->getTask()->getLastEvent()->getEndTime() - event->getStartTime() > 0.001){
+        //     printf(event->getTask()->viewEvent().c_str());
+        // }
+        #endif  
+
+        
         if(event->getStartTime() >= UpdateLinkTime){
             pool->blockRunNext();
             UpdateLink(event->getStartTime());
@@ -67,10 +90,6 @@ void NetWorkSimulation::flashEvent(){
             UpdateRateMap(event->getStartTime());
             UpdateRouteTime += nextUpdateRouteMap;
             pool->unblockRunNext();
-        }
-        {
-            std::unique_lock<std::mutex> lock(TransEvent::mut);
-            TransEvent::eventQueue.pop();
         }
         // event->finish();
         initThread();

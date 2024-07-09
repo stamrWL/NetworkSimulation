@@ -5,6 +5,7 @@
 #include "LinkTree.h"
 #include <memory>
 #include <vector>
+#include <mutex>
 #include <map>
 class LinkTree;
 
@@ -16,12 +17,14 @@ private:
     LinkTree* communication;
     std::shared_ptr<std::map<double,std::pair<double,double>>> RateDelayList;
 public:
+static std::mutex SLMTX;
 static std::map<int,std::map<int,std::shared_ptr<Link>>> linkMap;
 static constexpr double lightRate = 299792458;
 static void insertLinkMap(std::pair<int,int>&,std::shared_ptr<Link>&);
 static void insertLinkMap(int,int,std::shared_ptr<Link>&);
 static std::shared_ptr<Link> getLinkMap(std::pair<int,int>&);
 static std::shared_ptr<Link> getLinkMap(int,int);
+    std::mutex uniMTX;
 public:
     Link(int fromIndex,int ToIndex,std::shared_ptr<std::vector<std::pair<double,double>>> InitRate,std::shared_ptr<std::vector<std::pair<double,double>>> Delay,double stepTime);
     static std::shared_ptr<Link> CreateLink(int fromIndex, int ToIndex, double InitRate, double Length, double stepTime, double left = 0, double right = 1800);

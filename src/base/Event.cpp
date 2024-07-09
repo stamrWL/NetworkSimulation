@@ -9,6 +9,9 @@ std::map<long long,std::shared_ptr<TransEvent>> TransEvent::eventMap;
 std::mutex TransEvent::mut;
 bool TransEvent::needblock = true;
 std::condition_variable TransEvent::cv;
+#ifdef TEST_DEBUG
+std::set<std::tuple<long long,int,int>> TransEvent::testSet;
+#endif
 
 std::priority_queue<std::shared_ptr<TransEvent>,std::vector<std::shared_ptr<TransEvent>>,CompareTransEvent> TransEvent::eventQueue;
 
@@ -22,10 +25,22 @@ TransEvent::TransEvent(long long Taskid,int fIndex,int tIndex,double sTime,doubl
 }
 
 std::shared_ptr<TransEvent>  TransEvent::CreateEvent(long long Taskid,int fIndex, int tIndex, double sTime, double eTime){
-    auto event = std::make_shared<TransEvent>(Taskid,fIndex, tIndex, sTime, eTime);
-    TransEvent::eventMap[event->getEventid()] = event;
-    if(Task::TaskMap.find(Taskid) != Task::TaskMap.end())
+    std::shared_ptr<TransEvent> event = nullptr;
+#ifdef TEST_DEBUG
+    if(TransEvent::testSet.find({Taskid,fIndex,tIndex}) != TransEvent::testSet.end()){
+        printf("CreateEvent error\n");
+    }
+    TransEvent::testSet.insert({Taskid, fIndex, tIndex});
+#endif
+    {
+        std::unique_lock<std::mutex> Lock(TransEvent::mut);
+        event = std::make_shared<TransEvent>(Taskid,fIndex, tIndex, sTime, eTime);
+        TransEvent::eventMap[event->getEventid()] = event;
+    }
+    if(Task::TaskMap.find(Taskid) != Task::TaskMap.end()){
+        std::unique_lock<std::mutex> Lock(Task::mtx);
         Task::TaskMap[Taskid]->addEvent(event);
+    }
     return event;
 }
 
@@ -34,6 +49,7 @@ long long TransEvent::getEventid() const{
 }
 
 std::shared_ptr<Task>  TransEvent::getTask(){
+    std::unique_lock<std::mutex> Lock(Task::mtx);
     return Task::TaskMap[this->Taskid];
 }
 
@@ -62,6 +78,6 @@ void TransEvent::finish(double endTime){
     }
     if(endTime >= 0)
         this->endTime = endTime;
-
-    Node::NodeMap[this->toIndex]->acceptTask(Task::TaskMap[this->Taskid],this->endTime);  
+    auto task = getTask();
+    Node::NodeMap[this->toIndex]->acceptTask(task,this->endTime);  
 }

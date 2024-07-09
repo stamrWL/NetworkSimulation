@@ -8,7 +8,7 @@
 #include <memory>
 #include <vector>
 #include <cfloat>
-#include "RWMutex.h"
+// #include "RWMutex.h"
 
 class TreeNode : public std::enable_shared_from_this<TreeNode>{
 private:
@@ -97,20 +97,13 @@ private:
 	double windows;
 	double defualtValue;
 
-
-	// RWMutex rwLock;
-	void shareLock();
-	void releaseShareLock();
-	void uniqueLock();
-	void releaseUniqueLock();
-	// 
 protected:
 	std::shared_ptr<TreeNode> getInterval(double point);
 	void Slice(double B);
 	void extend(double rightB);
 	void extend(double rightB, double value);
 public:
-	std::recursive_mutex MTX;
+	// std::recursive_mutex MTX;
 
 	IntervalTree(double defualtValue, double lastLeftB = 0, double windows = 30) {
 		this->root = std::make_shared<TreeNode>(lastLeftB, windows, defualtValue);

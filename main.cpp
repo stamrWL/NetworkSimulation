@@ -17,7 +17,7 @@ int main(){
     usst_Message(client.Wait_function(client.ObtainNumOfGS())).ObtainNumOfGS(GSsize);
     usst_Message(client.Wait_function(client.ObtainNumOfSats())).ObtainNumOfSats(SatSize);
 
-    NetWorkSimulation a(2,3,stepTime,2);
+    NetWorkSimulation a(2,3,stepTime,10);
 
     // std::vector<double> timesteps = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     // std::vector<double> rateLists = {10,12,11,12,11,14,13,12,11,12,14};
@@ -27,7 +27,7 @@ int main(){
     usst_Message(client.Wait_function(client.ObtainHasAccess())).ObtainHasAccess(fromType,fromIndex,toType,toIndex);
     
     {
-        ThreadPool pool(1);
+        ThreadPool pool(20);
         std::set<std::pair<int,int>> Set;
         std::mutex mtx;
 
@@ -43,29 +43,41 @@ int main(){
                     std::unique_lock<std::mutex> lock(*mtx);  
                     int fo = fromType[i]*144 + fromIndex[i];
                     int to = toType[i]*144 + toIndex[i];
+                    if(fo < 0||to < 0||fo > 21600||to > 21600){
+                        printf("error\n");
+                    }
 
-                    if(Set.find(std::make_pair(fo,to)) == Set.end()){
-                        Set.insert(std::make_pair(fo,to));
+                    if(Set.find({fo,to}) == Set.end()){
+                        Set.insert({fo,to});
                         a.initLink(fromType[i],fromIndex[i],toType[i],toIndex[i],Time,Rate,Delay);
                     }
                 }
             },i,std::ref(fromType),std::ref(fromIndex),std::ref(toType),std::ref(toIndex),std::ref(client),std::ref(a),std::ref(Set),&mtx);
         }
         pool.start();
-        sleep(1);
+        Sleep(1);
         pool.waitAllFinish();
     }
 
-    for(double time =0 ;time<120;time+=0.2){
-        a.createTask(int(time/0.2),time,1,1,1,1,10);
+    // for(double time =0 ;time<120;time+=0.2){
+    //     a.createTask(int(time/0.2),time,0.1,1,1,1,10);
+    // }
+    for(int taskid = 0;taskid < 120*int(1/0.2);taskid++){
+        a.createTask(taskid,double(taskid)*0.2,0.1,1,1,1,10);
     }
+
     a.start();
     long long taskID ;
     double endTime = 0;
+    std::set<int> Set;
     for(;endTime<120;)
     {
         a.NextFinish(taskID,endTime);
-        std::cout<<taskID<<":"<<endTime - taskID*0.2<<std::endl;
+        std::cout<<taskID<<":"<<endTime - Task::TaskMap[taskID]->getStartTime() <<std::endl;
+        if(endTime - Task::TaskMap[taskID]->getStartTime() > 0.05 || Set.find(taskID) != Set.end()){
+            printf(" \n");
+        }
+        Set.emplace(taskID);
     }
 
     // a.NextFinish(taskID,endTime);

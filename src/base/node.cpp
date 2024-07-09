@@ -45,9 +45,14 @@ void Node::Trans(std::shared_ptr<TransEvent> event)
 {
     auto task = event->getTask();
     double size = task->getTaskSize();
-    auto link = Link::getLinkMap(event->getFromIndex(), event->getToIndex());
-    double startTime = event->getStartTime();
-    double endTime = link->trans(startTime, size);
+    double endTime = -1;
+    {
+        auto link = Link::getLinkMap(event->getFromIndex(), event->getToIndex());
+        std::unique_lock<std::mutex> lock(link->uniMTX);
+        double startTime = event->getStartTime();
+        endTime = link->trans(startTime, size);
+    }
+
     event->setEndTime(endTime);
     {
         std::unique_lock<std::mutex> lock(TransEvent::mut);

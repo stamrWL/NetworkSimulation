@@ -33,3 +33,13 @@ std::shared_ptr<Task> Task::CreateTask(long long TaskID, double startTime, doubl
         }
         return newTask;
 };
+
+#ifdef TEST_DEBUG
+std::string Task::viewEvent(){
+        std::ostringstream stream;
+        for(auto& i:EventList){
+            stream<<i->getEventid()<<":"<<i->getFromIndex()<<"->"<<i->getToIndex()<<"  ,cost:"<<i->getStartTime() - i->getEndTime()<<std::endl;
+        }
+        return stream.str();
+    }
+#endif

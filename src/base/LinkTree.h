@@ -8,19 +8,20 @@ class Link;
 
 class LinkTree{
 private:
+#ifdef TEST_DEBUG
+public:
+#endif
     IntervalTree* LinkB;
     Link* link;
     double LastUpdate;
     double LastLeft;
     double stepTime;
 protected:
-    void UpdateTree(double time);
-
     void releasLeft(double now); 
 public:
     LinkTree(double initValue,double left,double stepTime,Link* link){
-        LastUpdate = 0;
-        LastLeft = 0;
+        LastUpdate = left;
+        LastLeft = left;
         this->stepTime = stepTime;
         this->link = link;
         LinkB = new IntervalTree(initValue,left,stepTime);

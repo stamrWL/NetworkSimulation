@@ -63,20 +63,18 @@ int main(){
     //     a.createTask(int(time/0.2),time,0.1,1,1,1,10);
     // }
     for(int taskid = 0;taskid < 120*int(1/0.2);taskid++){
-        a.createTask(taskid,double(taskid)*0.2,0.1,1,1,1,10);
+        a.createTask(taskid,double(taskid)*0.2,0.1,1,9,1,14);
     }
 
     a.start();
     long long taskID ;
     double endTime = 0;
     std::set<int> Set;
-    for(;endTime<120;)
+    for(;endTime<119;)
     {
         a.NextFinish(taskID,endTime);
-        std::cout<<taskID<<":"<<endTime - Task::TaskMap[taskID]->getStartTime() <<std::endl;
-        if(endTime - Task::TaskMap[taskID]->getStartTime() > 0.05 || Set.find(taskID) != Set.end()){
-            printf(" \n");
-        }
+        std::cout<<taskID<<","<<Task::TaskMap[taskID]->getStartTime()<<","<< endTime <<std::endl;
+
         Set.emplace(taskID);
     }
 

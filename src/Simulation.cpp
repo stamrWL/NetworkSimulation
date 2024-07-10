@@ -84,15 +84,17 @@ void NetWorkSimulation::flashEvent(){
         #endif  
 
         
-        while(event->getEndTime() + 2*stepTime >= UpdateLinkTime){
+        while(event->getEndTime() + stepTime >= UpdateLinkTime){
             pool->blockRunNext();
-            UpdateLink(event->getEndTime() + stepTime);
             UpdateLinkTime += nextUpdateLinkTime;
+            UpdateLink(UpdateLinkTime);
             pool->unblockRunNext();
         }
+
+
         if(event->getEndTime() >= UpdateRouteTime){
             pool->blockRunNext();
-            UpdateRateMap(event->getEndTime());
+            UpdateRateMap(UpdateRouteTime);
             UpdateRouteTime += nextUpdateRouteMap;
             pool->unblockRunNext();
         }
@@ -153,12 +155,28 @@ void NetWorkSimulation::UpdateLink(double now){
     for(auto &link_:Link::linkMap){
         for(auto &link:link_.second){
             // link.second->Update(now);
+#ifdef TEST_DEBUG
+            link.second->Update(now);
+            if(link.second->communication->LinkB->getRightB()< now ){
+                auto it = link.second->RateDelayList->upper_bound(now);
+                if(it != link.second->RateDelayList->begin())
+                    it--;
+                if(it->first >= now){
+                    link.second->Update(now);
+                }
+            }
+#else
             threads.emplace_back(&Link::Update, link.second, now);
+#endif
         }
     }
+#ifndef TEST_DEBUG
     for(auto &t:threads){
         t.join();
     }
+#else
+
+#endif
 }
 
 void NetWorkSimulation::UpdateRateMap(double now){

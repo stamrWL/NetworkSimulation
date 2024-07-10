@@ -11,6 +11,9 @@ class LinkTree;
 
 class Link{
 private:
+#ifdef TEST_DEBUG
+public:
+#endif
     int fromIndex;
     int ToIndex;
     double stepTime;

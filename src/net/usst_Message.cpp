@@ -123,8 +123,16 @@ if (msg.header.id == UsstMsgTypes::ObtainAccessDataRate2)
         {
             msg >> delay_>> rate_>> time_;
             Time[i] = time_;
-            Rate[i] = rate_ < 0 ? DBL_MAX: rate_;
-            Delay[i] = delay_ < 0 ? DBL_MAX: delay_;
+            if(rate_ < 0)
+                Rate[i] = DBL_MAX;
+            else
+                Rate[i] = rate_;
+            // Rate[i] = rate_ < 0 ? DBL_MAX: rate_;
+            if(delay_ < 0)
+                Delay[i] = DBL_MAX;
+            else
+                Delay[i] = delay_;
+            // Delay[i] = delay_ < 0 ? DBL_MAX: delay_;
         }
     }
 }

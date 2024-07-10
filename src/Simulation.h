@@ -34,7 +34,7 @@ protected:
 
     double lastTime = 0;
 public:
-    NetWorkSimulation(double nextUpdateLinkTime, double nextUpdateRouteMap,double stepTime, int PoolMax = 10);
+    NetWorkSimulation(double nextUpdateRouteMap,double stepTime, int PoolMax = 10);
 
     void initThread();
     void releaseThread();

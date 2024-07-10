@@ -28,7 +28,7 @@ std::shared_ptr<TransEvent>  TransEvent::CreateEvent(long long Taskid,int fIndex
     std::shared_ptr<TransEvent> event = nullptr;
 #ifdef TEST_DEBUG
     if(TransEvent::testSet.find({Taskid,fIndex,tIndex}) != TransEvent::testSet.end()){
-        printf("CreateEvent error\n");
+        printf("CreateEvent error:(%dll,%d,%d)\n",Taskid,fIndex,tIndex);
     }
     TransEvent::testSet.insert({Taskid, fIndex, tIndex});
 #endif

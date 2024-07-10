@@ -106,7 +106,7 @@ public:
 	// std::recursive_mutex MTX;
 
 	IntervalTree(double defualtValue, double lastLeftB = 0, double windows = 30) {
-		this->root = std::make_shared<TreeNode>(lastLeftB, windows, defualtValue);
+		this->root = std::make_shared<TreeNode>(lastLeftB,lastLeftB + windows, defualtValue);
 		this->List = std::make_shared<TreeNode>(-1, -1, -1);
 		// 双向链表的头指针
 		this->root->setNextNode(this->List);

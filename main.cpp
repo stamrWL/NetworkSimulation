@@ -17,7 +17,7 @@ int main(){
     usst_Message(client.Wait_function(client.ObtainNumOfGS())).ObtainNumOfGS(GSsize);
     usst_Message(client.Wait_function(client.ObtainNumOfSats())).ObtainNumOfSats(SatSize);
 
-    NetWorkSimulation a(2,3,stepTime,10);
+    NetWorkSimulation a(3,stepTime,10);
 
     // std::vector<double> timesteps = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     // std::vector<double> rateLists = {10,12,11,12,11,14,13,12,11,12,14};

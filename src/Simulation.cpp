@@ -11,15 +11,16 @@ void NetWorkSimulation::floydWarshall(std::vector<std::vector<double> >& graph, 
                     graph[i][j] = graph[i][k] + graph[k][j];
                     nextStep[i][j] = nextStep[i][k];
                     // 最短路径合理？
+                    // 会出现回环
                 }
             }
         }
     }
 }
 
-NetWorkSimulation::NetWorkSimulation(double nextUpdateLinkTime, double nextUpdateRouteMap,double stepTime, int PoolMax)
+NetWorkSimulation::NetWorkSimulation( double nextUpdateRouteMap,double stepTime, int PoolMax)
 {
-    this->nextUpdateLinkTime = nextUpdateLinkTime;
+    this->nextUpdateLinkTime = stepTime;
     this->nextUpdateRouteMap = nextUpdateRouteMap;
     this->PoolMax = PoolMax;
     this->PoolSize = 0;
@@ -73,21 +74,25 @@ void NetWorkSimulation::flashEvent(){
         }  
         test.insert({Tid,FromIndex,ToIndex}); 
 
+        // if(event->getStartTime()>= 21){
+        //     printf("%lld\n", Tid);
+        // }
+
         // if(event->getTask()->getLastEvent()->getEventid() != event->getEventid()&&event->getTask()->getLastEvent()->getEndTime() - event->getStartTime() > 0.001){
         //     printf(event->getTask()->viewEvent().c_str());
         // }
         #endif  
 
         
-        if(event->getStartTime() >= UpdateLinkTime){
+        while(event->getEndTime() + 2*stepTime >= UpdateLinkTime){
             pool->blockRunNext();
-            UpdateLink(event->getStartTime());
+            UpdateLink(event->getEndTime() + stepTime);
             UpdateLinkTime += nextUpdateLinkTime;
             pool->unblockRunNext();
         }
-        if(event->getStartTime() >= UpdateRouteTime){
+        if(event->getEndTime() >= UpdateRouteTime){
             pool->blockRunNext();
-            UpdateRateMap(event->getStartTime());
+            UpdateRateMap(event->getEndTime());
             UpdateRouteTime += nextUpdateRouteMap;
             pool->unblockRunNext();
         }
@@ -150,10 +155,9 @@ void NetWorkSimulation::UpdateLink(double now){
             // link.second->Update(now);
             threads.emplace_back(&Link::Update, link.second, now);
         }
-        for(auto &t:threads){
-            t.join();
-        }
-        threads.clear();
+    }
+    for(auto &t:threads){
+        t.join();
     }
 }
 
@@ -170,9 +174,18 @@ void NetWorkSimulation::UpdateRateMap(double now){
             int from = link.second->getFrom();
             int to = link.second->getTo();
             dist[from][to] = link.second->getValue(now);
+#ifdef TEST_DEBUG
+            if(dist[from][to] < 0){
+                printf(" ");
+                dist[from][to] = link.second->getValue(now);
+            }
+#endif
             next[from][to] = dist[from][to] != DBL_MAX?to:INT32_MAX;
         }
     }
+    // if(now>=21){
+    //     printf(" ");
+    // }
     floydWarshall(dist, next);
     for(auto &node:Node::NodeMap){
         auto routeMap = std::make_shared<std::map<int,int>>();

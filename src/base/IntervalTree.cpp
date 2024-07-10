@@ -371,10 +371,13 @@ double IntervalTree::getRangeArea(double start,double end) {
 	// std::unique_lock<std::recursive_mutex> lock(MTX);
 	double RB = root->getRightB();
 	double Area = 0;
+	// if(root->getRightB() < root->getLeftB()){
+	// 	printf("error\n");
+	// }
 	if(RB < end){
 		double value = List->getLastNode()->getValue();
-		Area += (end - RB)*value;
-		end = RB;
+		Area += (end - std::max(start,RB))*value;
+		end = std::max(start,RB);
 	}
 	std::shared_ptr<TreeNode> Node = getInterval(start);
 	double lastPoint = start;

@@ -53,7 +53,7 @@ std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, double InitRa
     left = int(left / stepTime) * stepTime;
     for(double i = left;i<right;i+=stepTime){
         InitRateList->push_back(std::make_pair(i, InitRate));
-        DelayList->push_back(std::make_pair(i, Length/Link::lightRate));
+        DelayList->push_back(std::make_pair(i, Length));
     }
     auto link = std::make_shared<Link>(fromIndex, ToIndex, InitRateList, DelayList, stepTime);
     Link::insertLinkMap(fromIndex,ToIndex,link);
@@ -66,7 +66,7 @@ std::shared_ptr<Link> Link::CreateLink(int fromIndex, int ToIndex, std::vector<d
     for(int i=0;i<Time.size();i++){
         double time = int(Time[i]/stepTime)*stepTime;
         InitRate->push_back(std::make_pair(time, RateList[i]));
-        Delay->push_back(std::make_pair(time, LengthList[i]/Link::lightRate));
+        Delay->push_back(std::make_pair(time, LengthList[i]));
     }
     auto link = std::make_shared<Link>(fromIndex, ToIndex, InitRate, Delay, stepTime);
     // Link::linkMap.emplace()

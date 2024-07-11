@@ -52,6 +52,7 @@ public:
     double getEndTime()const{return endTime;};
     double getTaskSize()const{return TaskSize;};
     void setEndTime(double endTime){this->endTime = endTime;};
+    std::vector<std::shared_ptr<TransEvent>> getEventList(){return this->EventList;};
 #ifdef TEST_DEBUG
     std::shared_ptr<TransEvent> getLastEvent()const{
         return this->EventList.at(this->EventList.size()>=2?this->EventList.size()-2:0);

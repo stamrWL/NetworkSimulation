@@ -131,7 +131,7 @@ if (msg.header.id == UsstMsgTypes::ObtainAccessDataRate2)
             if(delay_ < 0)
                 Delay[i] = DBL_MAX;
             else
-                Delay[i] = delay_;
+                Delay[i] = delay_/1000;
             // Delay[i] = delay_ < 0 ? DBL_MAX: delay_;
         }
     }

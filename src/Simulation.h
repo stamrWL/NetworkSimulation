@@ -29,15 +29,14 @@ private:
 protected:
     void floydWarshall(std::vector<std::vector<double>> &graph, std::vector<std::vector<int>> &nextStep);
     void flashEvent();
+    void initThread();
+    void releaseThread();
     int PoolSize;
     int PoolMax;
 
     double lastTime = 0;
 public:
     NetWorkSimulation(double nextUpdateRouteMap,double stepTime, int PoolMax = 10);
-
-    void initThread();
-    void releaseThread();
 
     int initNode(int FType, int Findex);
     void initLink(int FType, int Findex, int TType, int Tindex, std::vector<double> &Time, std::vector<double> &RateList, std::vector<double> &LengthList);

@@ -60,7 +60,7 @@ void NetWorkSimulation::flashEvent(){
         }
         {
             std::unique_lock<std::mutex> lock(Task::mtx);
-            Task::cv.wait(lock,[]{
+            Task::cv.wait(lock,[this]{
                 return !Task::TaskHasFinish;
             });
         }
@@ -83,14 +83,12 @@ void NetWorkSimulation::flashEvent(){
         // }
         #endif  
 
-        
         while(event->getEndTime() + stepTime >= UpdateLinkTime){
             pool->blockRunNext();
             UpdateLinkTime += nextUpdateLinkTime;
             UpdateLink(UpdateLinkTime);
             pool->unblockRunNext();
         }
-
 
         if(event->getEndTime() >= UpdateRouteTime){
             pool->blockRunNext();
@@ -149,26 +147,32 @@ void NetWorkSimulation::initLink(int FType,int Findex,int TType,int Tindex,std::
     }
     Link::CreateLink(fir, sec, Time, RateList, LengthList,stepTime);
 }
-
+// std::map<int,std::map<int,std::shared_ptr<Link>>> Link::linkMap;
 void NetWorkSimulation::UpdateLink(double now){
     std::vector<std::thread> threads;
     for(auto &link_:Link::linkMap){
-        for(auto &link:link_.second){
-            // link.second->Update(now);
+        auto linkMap = &(link_.second);
+        std::thread th([](
+            std::map<int, std::shared_ptr<Link>>* linkMap,
+            double now
+        ){
+            for(auto &link:(*linkMap)){
+                link.second->Update(now);
 #ifdef TEST_DEBUG
-            link.second->Update(now);
-            if(link.second->communication->LinkB->getRightB()< now ){
-                auto it = link.second->RateDelayList->upper_bound(now);
-                if(it != link.second->RateDelayList->begin())
-                    it--;
-                if(it->first >= now){
-                    link.second->Update(now);
-                }
-            }
-#else
-            threads.emplace_back(&Link::Update, link.second, now);
+                            link.second->Update(now);
+                            if(link.second->communication->LinkB->getRightB()< now ){
+                                auto it = link.second->RateDelayList->upper_bound(now);
+                                if(it != link.second->RateDelayList->begin())
+                                    it--;
+                                if(it->first >= now){
+                                    link.second->Update(now);
+                                }
+                            }
 #endif
-        }
+            }
+
+        },&link_.second,now);
+        threads.push_back(std::move(th));
     }
 #ifndef TEST_DEBUG
     for(auto &t:threads){
@@ -233,13 +237,13 @@ void NetWorkSimulation::NextFinish(long long &TaskID, double &now){
     std::unique_lock<std::mutex> lock(Task::mtx);
     Task::cv.wait(lock, []{return Task::TaskHasFinish;});
     std::shared_ptr<Task> task = Task::FinishTask.top();
-    TaskID = task->getTaskID();
-    now = task->getEndTime();
     Task::FinishTask.pop();
     if(Task::FinishTask.empty()){
         Task::TaskHasFinish = false;
         Task::cv.notify_all();
     }
+    TaskID = task->getTaskID();
+    now = task->getEndTime();
 }
 
 void NetWorkSimulation::startEventFlash(){   
@@ -256,6 +260,10 @@ void NetWorkSimulation::start(){
         TransEvent::needblock = false;
         TransEvent::cv.notify_all();
     }
+}
+
+void NetWorkSimulation::stop(){
+    ;
 }
 
 void NetWorkSimulation::blockAll(){

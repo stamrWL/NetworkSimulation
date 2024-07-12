@@ -1,17 +1,23 @@
 #include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 #include "Simulation.h"
 
 namespace py = pybind11;
 
 PYBIND11_MODULE(Simulation,m){
     py::class_<NetWorkSimulation>(m, "Simulation")
-    .def(py::init<double,double,int>())
+    .def(py::init<double,double,int,double>())
     .def("initNode",&NetWorkSimulation::initNode)
     .def("initLink",&NetWorkSimulation::initLink)
     .def("UpdateLink",&NetWorkSimulation::UpdateLink)
     .def("UpdateRateMap",&NetWorkSimulation::UpdateRateMap)
     .def("createTask",&NetWorkSimulation::createTask)
-    .def("NextFinish",&NetWorkSimulation::NextFinish)
+    .def("NextFinish",[](NetWorkSimulation* NS){
+        long long taskid;
+        double now;
+        NS->NextFinish(taskid,now);
+        return std::make_pair(taskid,now);
+    })
     .def("startEventFlash",&NetWorkSimulation::startEventFlash)
     .def("blockAll",&NetWorkSimulation::blockAll)
     .def("start",&NetWorkSimulation::start)

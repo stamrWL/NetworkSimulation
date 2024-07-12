@@ -18,12 +18,14 @@ void NetWorkSimulation::floydWarshall(std::vector<std::vector<double> >& graph, 
     }
 }
 
-NetWorkSimulation::NetWorkSimulation( double nextUpdateRouteMap,double stepTime, int PoolMax)
+NetWorkSimulation::NetWorkSimulation( double nextUpdateRouteMap,double stepTime, int PoolMax, double nextUpdateTaskInterval)
 {
     this->nextUpdateLinkTime = stepTime;
     this->nextUpdateRouteMap = nextUpdateRouteMap;
     this->PoolMax = PoolMax;
     this->PoolSize = 0;
+    this->nextUpdateTaskInterval = nextUpdateTaskInterval;
+    this->initStartTaskTime = 0;
     this->stepTime = stepTime;
     this->pool = new ThreadPool(int(PoolMax * 0.7));
     this->pool->setCallback([this]() -> void
@@ -33,6 +35,7 @@ NetWorkSimulation::NetWorkSimulation( double nextUpdateRouteMap,double stepTime,
 };
 
 void NetWorkSimulation::flashEvent(){
+#ifdef TEST_DEBUG
     #if __cplusplus >= 201703L
         std::cout << "C++17" << std::endl;
     #elif __cplusplus >= 201402L
@@ -42,12 +45,11 @@ void NetWorkSimulation::flashEvent(){
     #else
         std::cout << "Pre-C++11" << std::endl;
     #endif
+#endif
 
     #ifdef TEST_DEBUG
     std::set<std::tuple<long long,int,int>> test;
     #endif
-
-
     double UpdateLinkTime = 0;
     double UpdateRouteTime = 0;
     std::shared_ptr<TransEvent> event;
@@ -82,7 +84,6 @@ void NetWorkSimulation::flashEvent(){
         //     printf(event->getTask()->viewEvent().c_str());
         // }
         #endif  
-
         while(event->getEndTime() + stepTime >= UpdateLinkTime){
             pool->blockRunNext();
             UpdateLinkTime += nextUpdateLinkTime;
@@ -118,6 +119,15 @@ void NetWorkSimulation::releaseThread(){
     TransEvent::cv.notify_all();
 }
 
+
+void NetWorkSimulation::CreateInitTask(){
+    int fromIndex = 0;
+    int ToIndex = 0;
+    auto task = Task::CreateTask(-1, initStartTaskTime, 0, fromIndex, ToIndex);
+    initStartTaskTime += nextUpdateTaskInterval;
+    Task::cv.notify_all();
+}
+
 int NetWorkSimulation::initNode(int FType,int Findex){
     std::pair<int, int> NodeKey = std::make_pair(FType, Findex);
     if (TyI2I.find({FType,Findex}) == TyI2I.end()){
@@ -130,7 +140,7 @@ int NetWorkSimulation::initNode(int FType,int Findex){
     return TyI2I[{FType,Findex}];
 }
 
-void NetWorkSimulation::initLink(int FType,int Findex,int TType,int Tindex,std::vector<double>& Time,std::vector<double>& RateList,std::vector<double>& LengthList){
+void NetWorkSimulation::initLink(int FType,int Findex,int TType,int Tindex,std::vector<double>& Time,std::vector<double>& RateList,std::vector<double>& DelayList){
     std::pair<int, int> FNodeKey = std::make_pair(FType, Findex);
     std::pair<int, int> SNodeKey = std::make_pair(TType, Tindex);
     int fir,sec;
@@ -145,41 +155,42 @@ void NetWorkSimulation::initLink(int FType,int Findex,int TType,int Tindex,std::
     }else{
         sec = TyI2I[SNodeKey];
     }
-    Link::CreateLink(fir, sec, Time, RateList, LengthList,stepTime);
+    Link::CreateLink(fir, sec, Time, RateList, DelayList,stepTime);
 }
-// std::map<int,std::map<int,std::shared_ptr<Link>>> Link::linkMap;
+
 void NetWorkSimulation::UpdateLink(double now){
+// Debug阶段不多线程
     std::vector<std::thread> threads;
     for(auto &link_:Link::linkMap){
         auto linkMap = &(link_.second);
+#ifndef TEST_DEBUG
         std::thread th([](
             std::map<int, std::shared_ptr<Link>>* linkMap,
             double now
         ){
+#endif
             for(auto &link:(*linkMap)){
                 link.second->Update(now);
 #ifdef TEST_DEBUG
-                            link.second->Update(now);
-                            if(link.second->communication->LinkB->getRightB()< now ){
-                                auto it = link.second->RateDelayList->upper_bound(now);
-                                if(it != link.second->RateDelayList->begin())
-                                    it--;
-                                if(it->first >= now){
-                                    link.second->Update(now);
-                                }
-                            }
+                if(link.second->communication->LinkB->getRightB()< now ){
+                    auto it = link.second->RateDelayList->upper_bound(now);
+                    if(it != link.second->RateDelayList->begin())
+                        it--;
+                    if(it->first >= now){
+                        link.second->Update(now);
+                    }
+                }
 #endif
             }
-
+#ifndef TEST_DEBUG
         },&link_.second,now);
         threads.push_back(std::move(th));
+#endif
     }
 #ifndef TEST_DEBUG
     for(auto &t:threads){
         t.join();
     }
-#else
-
 #endif
 }
 
@@ -234,16 +245,23 @@ long long NetWorkSimulation::createTask(long long TaskID, double startTime, doub
 }
 
 void NetWorkSimulation::NextFinish(long long &TaskID, double &now){
-    std::unique_lock<std::mutex> lock(Task::mtx);
-    Task::cv.wait(lock, []{return Task::TaskHasFinish;});
-    std::shared_ptr<Task> task = Task::FinishTask.top();
-    Task::FinishTask.pop();
-    if(Task::FinishTask.empty()){
-        Task::TaskHasFinish = false;
+    std::shared_ptr<Task> task = nullptr;
+    {
+        std::unique_lock<std::mutex> lock(Task::mtx);
+        Task::cv.wait(lock, []{return Task::TaskHasFinish;});
+        task = Task::FinishTask.top();
+        Task::FinishTask.pop();
+        if(Task::FinishTask.empty()){
+            Task::TaskHasFinish = false;
+        }
         Task::cv.notify_all();
     }
     TaskID = task->getTaskID();
     now = task->getEndTime();
+    if(TaskID == -1){
+        CreateInitTask();
+        blockAll();
+    }
 }
 
 void NetWorkSimulation::startEventFlash(){   
@@ -253,6 +271,8 @@ void NetWorkSimulation::startEventFlash(){
 }
 
 void NetWorkSimulation::start(){
+    CreateInitTask();
+
     std::thread FlashThread(&NetWorkSimulation::flashEvent,this);
     FlashThread.detach();
     {

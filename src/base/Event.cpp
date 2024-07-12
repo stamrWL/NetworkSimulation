@@ -1,6 +1,9 @@
 #include "Event.h"
 
 bool CompareTransEvent::operator()(const std::shared_ptr<TransEvent> a,const  std::shared_ptr<TransEvent> b){
+    if(a->getEndTime() == b->getEndTime()){
+        return a->getTask()->getTaskID() > b->getTask()->getTaskID();
+    }
     return a->getEndTime() > b->getEndTime();
 }
 
